@@ -20,6 +20,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.stream.Stream;
 
 public class SqlSelectQuery implements SelectQuery {
     private Set<GlobType> globTypes = new HashSet<GlobType>();
@@ -79,6 +80,10 @@ public class SqlSelectQuery implements SelectQuery {
             prettyWriter.append(where.toString());
         }
         return prettyWriter.toString();
+    }
+
+    public Stream<?> executeAsStream() {
+        throw new RuntimeException("Not implemented");
     }
 
     public GlobStream execute() {

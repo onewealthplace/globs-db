@@ -6,7 +6,11 @@ import org.globsframework.streams.GlobStream;
 import org.globsframework.utils.exceptions.ItemNotFound;
 import org.globsframework.utils.exceptions.TooManyItems;
 
+import java.util.stream.Stream;
+
 public interface SelectQuery {
+    Stream<?> executeAsStream();
+
     GlobStream execute();
 
     GlobList executeAsGlobs();

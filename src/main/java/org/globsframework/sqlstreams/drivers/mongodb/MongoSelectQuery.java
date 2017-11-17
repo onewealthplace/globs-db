@@ -49,7 +49,7 @@ public class MongoSelectQuery implements SelectQuery {
 
     static final Document END = new Document();
 
-    public Stream<Object> executeAsStream() {
+    public Stream<?> executeAsStream() {
         DocumentsIterator iterator = getDocumentsIterator();
         return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, 0), true);
     }
