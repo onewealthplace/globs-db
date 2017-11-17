@@ -77,7 +77,7 @@ public class MongoSelectQuery implements SelectQuery {
         DocumentsIterator iterator = getDocumentsIterator();
         return new GlobStream() {
             public boolean next() {
-                if (iterator.hasNext()){
+                if (iterator.hasNext()) {
                     iterator.next();
                     return true;
                 }
@@ -134,7 +134,7 @@ public class MongoSelectQuery implements SelectQuery {
         }
 
         public boolean hasNext() {
-            if (current == END){
+            if (current == END) {
                 currentDoc.set(null);
                 return false;
             }
