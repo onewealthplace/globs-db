@@ -3,17 +3,20 @@ buildscript {
     ext.user = "owp-tech"
 
     ext.glob_version = '2.1-SNAPSHOT'
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "io.codearte.gradle.nexus:gradle-nexus-staging-plugin:0.10.0"
+    }
 }
 
-plugins {
-    id 'io.codearte.nexus-staging' version '0.11.0'
-}
-
-group 'org.globsframwork'
+group 'org.globsframework'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
 apply plugin: 'maven-publish'
+apply plugin: 'io.codearte.nexus-staging'
 
 sourceCompatibility = 1.8
 
@@ -46,8 +49,8 @@ publishing {
     repositories {
         maven {
             credentials {
-                username pwd
-                password user
+                username user
+                password pwd
             }
             if (project.version.endsWith('-SNAPSHOT')) {
                 url "https://nexus.1wplace.com/repository/owp-maven-snapshots"
