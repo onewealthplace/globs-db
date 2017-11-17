@@ -4,7 +4,7 @@ import com.mongodb.async.client.MongoDatabase;
 import org.globsframework.sqlstreams.SqlConnection;
 import org.globsframework.sqlstreams.utils.AbstractSqlService;
 
-class MongoDbService extends AbstractSqlService {
+public class MongoDbService extends AbstractSqlService {
     private final MongoDatabase database;
 
     public MongoDbService(MongoDatabase database) {
