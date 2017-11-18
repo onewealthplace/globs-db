@@ -24,20 +24,20 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven {
-        name "snapshots"
-        credentials {
-            username user
-            password pwd
-        }
-        url "https://nexus.1wplace.com/repository/owp-maven-snapshots"
-    }
-    maven {
         name "release"
         credentials {
             username user
             password pwd
         }
         url "https://nexus.1wplace.com/repository/owp-maven"
+    }
+    maven {
+        name "snapshots"
+        credentials {
+            username user
+            password pwd
+        }
+        url "https://nexus.1wplace.com/repository/owp-maven-snapshots"
     }
 }
 
