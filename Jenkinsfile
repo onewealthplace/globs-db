@@ -15,7 +15,7 @@ node {
           junit 'build/test-results/test/*.xml'
         }
 
-        if (env.BRANCH_NAME == 'master') {
+        if (env.BRANCH_NAME == 'master'  || env.BRANCH_NAME == 'dev') {
             stage('Deploy') {
               sh "gradle publish"
             }
