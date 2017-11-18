@@ -1,6 +1,8 @@
 package org.globsframework.sqlstreams.drivers.mongodb;
 
 import com.mongodb.async.client.MongoDatabase;
+import org.globsframework.metamodel.Field;
+import org.globsframework.metamodel.GlobType;
 import org.globsframework.sqlstreams.SqlConnection;
 import org.globsframework.sqlstreams.utils.AbstractSqlService;
 
@@ -14,4 +16,14 @@ public class MongoDbService extends AbstractSqlService {
     public SqlConnection getDb() {
         return new MangoDbConnection(database, this);
     }
+
+
+    public String getTableName(GlobType globType) {
+        return globType.getName();
+    }
+
+    public String getColumnName(Field field) {
+        return field.getName();
+    }
+
 }

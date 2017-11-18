@@ -70,7 +70,12 @@ public class MongoSelectBuilder implements SelectBuilder {
     }
 
     public SelectBuilder select(StringField field, Ref<StringAccessor> accessor) {
-        accessor.set(new StringMongoAccessor(sqlService.getColumnName(field), currentDoc));
+        if (field.isKeyField()) {
+            accessor.set(new KeyStringMongoAccessor(sqlService.getColumnName(field), currentDoc));
+        }
+        else {
+            accessor.set(new StringMongoAccessor(sqlService.getColumnName(field), currentDoc));
+        }
         fieldsAndAccessor.put(field, accessor.get());
         return this;
     }
@@ -100,9 +105,15 @@ public class MongoSelectBuilder implements SelectBuilder {
     }
 
     public StringAccessor retrieve(StringField field) {
-        StringMongoAccessor longMongoAccessor = new StringMongoAccessor(sqlService.getColumnName(field), currentDoc);
-        fieldsAndAccessor.put(field, longMongoAccessor);
-        return longMongoAccessor;
+        StringAccessor stringAccessor;
+        if (field.isKeyField()) {
+            stringAccessor = new KeyStringMongoAccessor(sqlService.getColumnName(field), currentDoc);
+        }
+        else {
+            stringAccessor = new StringMongoAccessor(sqlService.getColumnName(field), currentDoc);
+        }
+        fieldsAndAccessor.put(field, stringAccessor);
+        return stringAccessor;
     }
 
     public BooleanAccessor retrieve(BooleanField field) {

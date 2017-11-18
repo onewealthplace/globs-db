@@ -3,14 +3,17 @@ package org.globsframework.sqlstreams.drivers.mongodb;
 import com.github.fakemongo.junit.FongoAsyncRule;
 import com.mongodb.async.client.MongoCollection;
 import com.mongodb.async.client.MongoDatabase;
+import org.bson.Document;
 import org.bson.codecs.Codec;
 import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.globsframework.metamodel.GlobType;
+import org.globsframework.metamodel.GlobTypeLoader;
 import org.globsframework.metamodel.GlobTypeLoaderFactory;
 import org.globsframework.metamodel.annotations.KeyField;
 import org.globsframework.metamodel.fields.*;
+import org.globsframework.metamodel.index.MultiFieldUniqueIndex;
 import org.globsframework.model.Glob;
 import org.globsframework.model.GlobList;
 import org.globsframework.model.KeyBuilder;
@@ -22,7 +25,12 @@ import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+
+import static org.globsframework.sqlstreams.drivers.mongodb.MongoSelectTest.DummyObject.NAME_INDEX;
 
 public class MongoSelectTest {
     @Rule
@@ -85,6 +93,25 @@ public class MongoSelectTest {
         waitOn.get();
     }
 
+    @Test
+    public void checkIndexCreation() throws Exception {
+        MongoDatabase database = fongoAsyncRule.getDatabase();
+        MongoCollection<Document> globMongoCollection = database.getCollection(DummyObject.TYPE.getName(), Document.class);
+        MongoUtils.createIndexIfNeeded(globMongoCollection, Collections.singleton(NAME_INDEX));
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        List<Document> index = new ArrayList<>();
+        globMongoCollection.listIndexes().into(index, (documents, throwable) -> {
+            for (Document document : documents) {
+                if (MongoUtils.contain(NAME_INDEX, document)){
+                    future.complete(true);
+                    return;
+                }
+            }
+            future.complete(false);
+        });
+        Assert.assertTrue(future.get());
+    }
+
     static public class DummyObject {
         public static GlobType TYPE;
 
@@ -95,9 +122,14 @@ public class MongoSelectTest {
 
         public static StringField NAME;
 
+        public static StringField NAME_2;
+
+        public static MultiFieldUniqueIndex NAME_INDEX;
+
         static {
-            GlobTypeLoaderFactory.create(DummyObject.class)
-                  .load();
+            GlobTypeLoader globTypeLoader = GlobTypeLoaderFactory.create(DummyObject.class);
+            globTypeLoader.load();
+            globTypeLoader.defineMultiFieldUniqueIndex(NAME_INDEX, NAME, NAME_2);
         }
     }
 

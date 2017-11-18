@@ -15,12 +15,15 @@ import org.globsframework.streams.accessors.Accessor;
 import org.globsframework.utils.Ref;
 import org.globsframework.utils.exceptions.ItemNotFound;
 import org.globsframework.utils.exceptions.TooManyItems;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Spliterators;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -28,6 +31,7 @@ import java.util.stream.StreamSupport;
 import static com.mongodb.client.model.Projections.include;
 
 public class MongoSelectQuery implements SelectQuery {
+    public static final Logger LOGGER = LoggerFactory.getLogger(MongoSelectQuery.class);
     private final MongoCollection<Document> collection;
     private final Map<Field, Accessor> fieldsAndAccessor;
     private final Ref<Document> currentDoc;
@@ -51,7 +55,7 @@ public class MongoSelectQuery implements SelectQuery {
 
     public Stream<?> executeAsStream() {
         DocumentsIterator iterator = getDocumentsIterator();
-        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, 0), true);
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, 0), false);
     }
 
     private DocumentsIterator getDocumentsIterator() {
@@ -141,8 +145,12 @@ public class MongoSelectQuery implements SelectQuery {
             if (current != null) {
                 return true;
             }
-            current = documents.poll();
-            return current != END;
+            try {
+                current = documents.poll(1, TimeUnit.MINUTES);
+            } catch (InterruptedException e) {
+                LOGGER.error("Interrupted while waiting for data", e);
+            }
+            return current != null && current != END;
         }
 
         public Object next() {
