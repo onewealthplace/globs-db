@@ -9,7 +9,7 @@ import org.globsframework.metamodel.index.Index;
 import org.globsframework.metamodel.index.impl.IsUniqueIndexVisitor;
 import org.globsframework.model.Glob;
 import org.globsframework.sqlstreams.annotations.DbFieldName;
-import org.globsframework.sqlstreams.annotations.IsDbRef;
+import org.globsframework.sqlstreams.annotations.DbRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +70,7 @@ public class MongoUtils {
     public static String getDbName(Field field) {
         Glob name = field.findAnnotation(DbFieldName.KEY);
         if (name != null) {
-            if (field.hasAnnotation(IsDbRef.KEY)) {
+            if (field.hasAnnotation(DbRef.KEY)) {
                 return name.get(DbFieldName.NAME) + ".$id";
             }
             else {
