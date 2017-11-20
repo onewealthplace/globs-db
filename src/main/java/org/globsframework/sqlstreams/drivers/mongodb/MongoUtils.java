@@ -4,8 +4,12 @@ import com.mongodb.async.client.ListIndexesIterable;
 import com.mongodb.async.client.MongoCollection;
 import com.mongodb.client.model.IndexOptions;
 import org.bson.Document;
+import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.index.Index;
 import org.globsframework.metamodel.index.impl.IsUniqueIndexVisitor;
+import org.globsframework.model.Glob;
+import org.globsframework.sqlstreams.annotations.DbFieldName;
+import org.globsframework.sqlstreams.annotations.IsDbRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +17,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 public class MongoUtils {
     private static Logger LOGGER = LoggerFactory.getLogger(MongoUtils.class);
@@ -47,7 +50,7 @@ public class MongoUtils {
         }
         LOGGER.info("create index " + functionalIndex.getName());
         Document document = new Document();
-        functionalIndex.fields().forEach(field -> document.append(field.getName(), 1));
+        functionalIndex.fields().forEach(field -> document.append(getDbName(field), 1));
         collection.createIndex(document, new IndexOptions()
               .unique(functionalIndex.visit(new IsUniqueIndexVisitor()).isUnique())
               .name(functionalIndex.getName()), (result, t) -> {
@@ -61,6 +64,19 @@ public class MongoUtils {
         Document key = document.get("key", Document.class);
         String name = document.getString("name");
         return name.equals(functionalIndex.getName()) && functionalIndex.fields()
-              .allMatch(field -> key.containsKey(field.getName()));
+              .allMatch(field -> key.containsKey(getDbName(field)));
+    }
+
+    public static String getDbName(Field field) {
+        Glob name = field.findAnnotation(DbFieldName.KEY);
+        if (name != null) {
+            if (field.hasAnnotation(IsDbRef.KEY)) {
+                return name.get(DbFieldName.NAME) + ".$id";
+            }
+            else {
+                return name.get(DbFieldName.NAME);
+            }
+        }
+        return field.getName();
     }
 }
