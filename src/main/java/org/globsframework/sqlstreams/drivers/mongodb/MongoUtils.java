@@ -50,7 +50,7 @@ public class MongoUtils {
         }
         LOGGER.info("create index " + functionalIndex.getName());
         Document document = new Document();
-        functionalIndex.fields().forEach(field -> document.append(getDbName(field), 1));
+        functionalIndex.fields().forEach(field -> document.append(getFullDbName(field), 1));
         collection.createIndex(document, new IndexOptions()
               .unique(functionalIndex.visit(new IsUniqueIndexVisitor()).isUnique())
               .name(functionalIndex.getName()), (result, t) -> {
@@ -64,10 +64,21 @@ public class MongoUtils {
         Document key = document.get("key", Document.class);
         String name = document.getString("name");
         return name.equals(functionalIndex.getName()) && functionalIndex.fields()
-              .allMatch(field -> key.containsKey(getDbName(field)));
+              .allMatch(field -> key.containsKey(getFullDbName(field)));
     }
 
     public static String getDbName(Field field) {
+        Glob name = field.findAnnotation(DbFieldName.KEY);
+        if (name != null) {
+            return name.get(DbFieldName.NAME);
+        }
+        if (field.isKeyField() && field.getGlobType().getKeyFields().length == 1) {
+            return "_id";
+        }
+        return field.getName();
+    }
+
+    public static String getFullDbName(Field field) {
         Glob name = field.findAnnotation(DbFieldName.KEY);
         if (name != null) {
             if (field.hasAnnotation(DbRef.KEY)) {
@@ -79,4 +90,5 @@ public class MongoUtils {
         }
         return field.getName();
     }
+
 }

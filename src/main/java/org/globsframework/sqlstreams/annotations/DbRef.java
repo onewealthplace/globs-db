@@ -10,7 +10,7 @@ import org.globsframework.model.Key;
 public class DbRef {
     public static GlobType TYPE;
 
-    @FieldNameAnnotation("TO")
+    @FieldNameAnnotation("to")
     public static StringField TO;
 
     @InitUniqueKey
