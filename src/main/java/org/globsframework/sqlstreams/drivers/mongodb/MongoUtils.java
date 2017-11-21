@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class MongoUtils {
+    public static final String DB_REF_ID_EXT = "id";
+    public static final String DB_REF_REF_EXT = "ref";
+    public static final String ID_FIELD_NAME = "_id";
     private static Logger LOGGER = LoggerFactory.getLogger(MongoUtils.class);
 
     public static void createIndexIfNeeded(MongoCollection<Document> collection, Collection<Index> indices) {
@@ -73,7 +76,7 @@ public class MongoUtils {
             return name.get(DbFieldName.NAME);
         }
         if (field.isKeyField() && field.getGlobType().getKeyFields().length == 1) {
-            return "_id";
+            return ID_FIELD_NAME;
         }
         return field.getName();
     }
@@ -82,7 +85,7 @@ public class MongoUtils {
         Glob name = field.findAnnotation(DbFieldName.KEY);
         if (name != null) {
             if (field.hasAnnotation(DbRef.KEY)) {
-                return name.get(DbFieldName.NAME) + ".$id";
+                return name.get(DbFieldName.NAME) + '.' + DB_REF_ID_EXT;
             }
             else {
                 return name.get(DbFieldName.NAME);
