@@ -68,7 +68,7 @@ public class MongoSelectTest {
               .set(DummyObject.NAME, "name 3")
               .set(DummyObject.VALUE, 3.14 * 3.), sqlService);
 
-        SqlConnection mangoDbConnection = new MangoDbConnection(database, sqlService);
+        SqlConnection mangoDbConnection = new MongoDbConnection(database, sqlService);
         GlobList globs = mangoDbConnection.getQueryBuilder(DummyObject.TYPE)
               .selectAll()
               .getQuery()

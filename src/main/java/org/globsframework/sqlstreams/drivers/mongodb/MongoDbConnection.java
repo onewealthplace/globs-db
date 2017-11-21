@@ -10,11 +10,11 @@ import org.globsframework.sqlstreams.exceptions.RollbackFailed;
 
 import java.sql.Connection;
 
-public class MangoDbConnection implements SqlConnection {
+public class MongoDbConnection implements SqlConnection {
     MongoDatabase mongoDatabase;
     SqlService sqlService;
 
-    public MangoDbConnection(MongoDatabase mongoDatabase, SqlService sqlService) {
+    public MongoDbConnection(MongoDatabase mongoDatabase, SqlService sqlService) {
         this.mongoDatabase = mongoDatabase;
         this.sqlService = sqlService;
     }

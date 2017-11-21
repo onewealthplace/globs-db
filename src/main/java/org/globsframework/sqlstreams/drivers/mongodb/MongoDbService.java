@@ -14,7 +14,7 @@ public class MongoDbService extends AbstractSqlService {
     }
 
     public SqlConnection getDb() {
-        return new MangoDbConnection(database, this);
+        return new MongoDbConnection(database, this);
     }
 
 
