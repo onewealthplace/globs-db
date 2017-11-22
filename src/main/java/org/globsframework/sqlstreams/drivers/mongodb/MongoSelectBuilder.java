@@ -9,14 +9,20 @@ import org.globsframework.metamodel.fields.*;
 import org.globsframework.sqlstreams.SelectBuilder;
 import org.globsframework.sqlstreams.SelectQuery;
 import org.globsframework.sqlstreams.SqlService;
+import org.globsframework.sqlstreams.annotations.DbRef;
+import org.globsframework.sqlstreams.annotations.IsBigDecimal;
 import org.globsframework.sqlstreams.drivers.mongodb.accessor.*;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.Ref;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public class MongoSelectBuilder implements SelectBuilder {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoSelectBuilder.class);
     private final static MongoFieldVisitor MONGO_FIELD_VISITOR = new MongoFieldVisitor();
     private final MongoDatabase mongoDatabase;
     private final GlobType globType;
@@ -29,6 +35,17 @@ public class MongoSelectBuilder implements SelectBuilder {
         this.mongoDatabase = mongoDatabase;
         this.globType = globType;
         this.sqlService = sqlService;
+        if (LOGGER.isDebugEnabled()) {
+            CompletableFuture completableFuture = new CompletableFuture();
+            mongoDatabase.listCollections().forEach(document -> LOGGER.debug(document.toJson()), (result, t) -> {
+                completableFuture.complete(null);
+            });
+            try {
+                completableFuture.get();
+            } catch (Exception e) {
+                throw new RuntimeException("Fail to connect to db ");
+            }
+        }
         collection = mongoDatabase.getCollection(sqlService.getTableName(globType), Document.class);
     }
 
@@ -70,10 +87,9 @@ public class MongoSelectBuilder implements SelectBuilder {
     }
 
     public SelectBuilder select(StringField field, Ref<StringAccessor> accessor) {
-        if (field.isKeyField()) {
+        if (field.hasAnnotation(DbRef.KEY)) {
             accessor.set(new KeyStringMongoAccessor(sqlService.getColumnName(field), currentDoc));
-        }
-        else {
+        } else {
             accessor.set(new StringMongoAccessor(sqlService.getColumnName(field), currentDoc));
         }
         fieldsAndAccessor.put(field, accessor.get());
@@ -106,10 +122,9 @@ public class MongoSelectBuilder implements SelectBuilder {
 
     public StringAccessor retrieve(StringField field) {
         StringAccessor stringAccessor;
-        if (field.isKeyField()) {
+        if (field.hasAnnotation(DbRef.KEY)) {
             stringAccessor = new KeyStringMongoAccessor(sqlService.getColumnName(field), currentDoc);
-        }
-        else {
+        } else {
             stringAccessor = new StringMongoAccessor(sqlService.getColumnName(field), currentDoc);
         }
         fieldsAndAccessor.put(field, stringAccessor);
@@ -123,9 +138,14 @@ public class MongoSelectBuilder implements SelectBuilder {
     }
 
     public DoubleAccessor retrieve(DoubleField field) {
-        DoubleMongoAccessor longMongoAccessor = new DoubleMongoAccessor(sqlService.getColumnName(field), currentDoc);
-        fieldsAndAccessor.put(field, longMongoAccessor);
-        return longMongoAccessor;
+        DoubleAccessor doubleAccessor;
+        if (field.hasAnnotation(IsBigDecimal.KEY)) {
+            doubleAccessor = new DoubleFromBigDecimalMongoAccessor(sqlService.getColumnName(field), currentDoc);
+        } else {
+            doubleAccessor = new DoubleMongoAccessor(sqlService.getColumnName(field), currentDoc);
+        }
+        fieldsAndAccessor.put(field, doubleAccessor);
+        return doubleAccessor;
     }
 
     public BlobAccessor retrieve(BlobField field) {
