@@ -88,6 +88,8 @@ public class MongoSelectBuilder implements SelectBuilder {
 
     public SelectBuilder select(StringField field, Ref<StringAccessor> accessor) {
         if (field.hasAnnotation(DbRef.KEY)) {
+            accessor.set(new RefStringMongoAccessor(sqlService.getColumnName(field), currentDoc));
+        } else if (field.isKeyField() && field.getGlobType().getKeyFields().length == 1) {
             accessor.set(new KeyStringMongoAccessor(sqlService.getColumnName(field), currentDoc));
         } else {
             accessor.set(new StringMongoAccessor(sqlService.getColumnName(field), currentDoc));
@@ -123,6 +125,8 @@ public class MongoSelectBuilder implements SelectBuilder {
     public StringAccessor retrieve(StringField field) {
         StringAccessor stringAccessor;
         if (field.hasAnnotation(DbRef.KEY)) {
+            stringAccessor = new RefStringMongoAccessor(sqlService.getColumnName(field), currentDoc);
+        } else if (field.isKeyField() && field.getGlobType().getKeyFields().length == 1) {
             stringAccessor = new KeyStringMongoAccessor(sqlService.getColumnName(field), currentDoc);
         } else {
             stringAccessor = new StringMongoAccessor(sqlService.getColumnName(field), currentDoc);

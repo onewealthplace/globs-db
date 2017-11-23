@@ -23,7 +23,7 @@ public class MongoDbService extends AbstractSqlService {
     }
 
     public String getColumnName(Field field) {
-        return field.getName();
+        return MongoUtils.getDbName(field);
     }
 
 }
