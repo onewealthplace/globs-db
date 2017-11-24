@@ -98,4 +98,11 @@ public class MongoUtils {
         }
     }
 
+    public static String getIdFromRef(Document unNormalized, String idField) {
+        Document document = unNormalized.get(idField, Document.class);
+        if (document == null) {
+            return null;
+        }
+        return document.getObjectId(MongoUtils.DB_REF_ID_EXT).toString();
+    }
 }
