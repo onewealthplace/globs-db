@@ -86,14 +86,12 @@ public class MongoUtils {
         String dbName;
         if (name != null) {
             dbName = name.get(DbFieldName.NAME);
-        }
-        else {
+        } else {
             dbName = field.getName();
         }
         if (field.hasAnnotation(DbRef.KEY)) {
             return dbName + '.' + DB_REF_ID_EXT;
-        }
-        else {
+        } else {
             return dbName;
         }
     }

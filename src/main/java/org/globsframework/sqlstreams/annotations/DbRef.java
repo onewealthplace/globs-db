@@ -8,9 +8,7 @@ import org.globsframework.metamodel.annotations.InitUniqueKey;
 import org.globsframework.metamodel.fields.StringField;
 import org.globsframework.model.Key;
 import org.globsframework.model.MutableGlob;
-import org.globsframework.sqlstreams.annotations.typed.TypedDbFieldName;
 import org.globsframework.sqlstreams.annotations.typed.TypedDbRef;
-import sun.reflect.annotation.TypeAnnotation;
 
 import java.lang.annotation.Annotation;
 
