@@ -24,7 +24,7 @@ public class MongoUtils {
     public static final String ID_FIELD_NAME = "_id";
     private static Logger LOGGER = LoggerFactory.getLogger(MongoUtils.class);
 
-    public static void createIndexIfNeeded(MongoCollection<Document> collection, Collection<Index> indices) {
+    public static void createIndexIfNeeded(MongoCollection<?> collection, Collection<Index> indices) {
         List<Document> documents = new ArrayList<>();
         ListIndexesIterable<Document> documentListIndexesIterable = collection.listIndexes();
         CompletableFuture<Throwable> future = new CompletableFuture<>();
@@ -45,7 +45,7 @@ public class MongoUtils {
         }
     }
 
-    private static void findOrCreateIndex(MongoCollection<Document> collection, Index functionalIndex, List<Document> documents) {
+    private static void findOrCreateIndex(MongoCollection<?> collection, Index functionalIndex, List<Document> documents) {
         for (Document document : documents) {
             if (contain(functionalIndex, document)) {
                 return;
