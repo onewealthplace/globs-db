@@ -27,13 +27,6 @@ object OWP_GlobsDb_Build : BuildType({
             dockerImage = "gradle:4.3.1"
             dockerRunParameters = "--net=host"
         }
-        gradle {
-            tasks = "publish"
-            useGradleWrapper = true
-            enableStacktrace = true
-            dockerImage = "gradle:4.3.1"
-            dockerRunParameters = "--net=host"
-        }
         script {
             name = "Decide if we must deploy"
             scriptContent = """
@@ -42,6 +35,13 @@ object OWP_GlobsDb_Build : BuildType({
                     exit 1
                 fi
             """.trimIndent()
+        }
+        gradle {
+            tasks = "publish"
+            useGradleWrapper = true
+            enableStacktrace = true
+            dockerImage = "gradle:4.3.1"
+            dockerRunParameters = "--net=host"
         }
     }
 
