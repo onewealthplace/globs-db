@@ -2,6 +2,7 @@ package OWP_GlobsDb.buildTypes
 
 import jetbrains.buildServer.configs.kotlin.v2017_2.*
 import jetbrains.buildServer.configs.kotlin.v2017_2.buildSteps.gradle
+import jetbrains.buildServer.configs.kotlin.v2017_2.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.v2017_2.triggers.vcs
 
 object OWP_GlobsDb_Build : BuildType({
@@ -32,6 +33,15 @@ object OWP_GlobsDb_Build : BuildType({
             enableStacktrace = true
             dockerImage = "gradle:4.3.1"
             dockerRunParameters = "--net=host"
+        }
+        script {
+            name = "Decide if we must deploy"
+            scriptContent = """
+                if [ -n "${'$'}BUILD_IS_PERSONAL" ]; then
+                    echo "Build is personal, exiting"
+                    exit 1
+                fi
+            """.trimIndent()
         }
     }
 
