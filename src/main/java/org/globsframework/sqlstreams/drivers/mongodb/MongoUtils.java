@@ -77,8 +77,7 @@ public class MongoUtils {
 
     protected static boolean contain(Index functionalIndex, Document document) {
         Document key = document.get("key", Document.class);
-        String name = document.getString("name");
-        return name.equals(functionalIndex.getName()) && functionalIndex.fields()
+        return functionalIndex.fields()
               .allMatch(field -> key.containsKey(getFullDbName(field)));
     }
 
