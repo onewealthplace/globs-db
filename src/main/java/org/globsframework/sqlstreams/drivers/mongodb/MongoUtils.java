@@ -69,6 +69,8 @@ public class MongoUtils {
               .name(functionalIndex.getName()), (result, t) -> {
             if (t != null) {
                 LOGGER.error("Fail to create index " + functionalIndex.getName(), t);
+            } else if (result != null) {
+                LOGGER.info("Index " + functionalIndex.getName() + " created : '" + result + "'");
             }
         });
     }
