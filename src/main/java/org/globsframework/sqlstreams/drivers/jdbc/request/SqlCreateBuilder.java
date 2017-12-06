@@ -83,6 +83,14 @@ public class SqlCreateBuilder implements CreateBuilder {
         return setObject(field, accessor);
     }
 
+    public CreateBuilder set(DoubleField field, DoubleAccessor accessor) {
+        return setObject(field, accessor);
+    }
+
+    public CreateBuilder set(BooleanField field, BooleanAccessor accessor) {
+        return setObject(field, accessor);
+    }
+
     public CreateBuilder set(BlobField field, BlobAccessor accessor) {
         return setObject(field, accessor);
     }
@@ -97,6 +105,14 @@ public class SqlCreateBuilder implements CreateBuilder {
 
     public CreateBuilder set(LongField field, Long value) {
         return setObject(field, new ValueLongAccessor(value));
+    }
+
+    public CreateBuilder set(DoubleField field, Double value) {
+        return setObject(field, new ValueDoubleAccessor(value));
+    }
+
+    public CreateBuilder set(BooleanField field, Boolean value) {
+        return setObject(field, new ValueBooleanAccessor(value));
     }
 
     public CreateBuilder set(IntegerField field, Integer value) {

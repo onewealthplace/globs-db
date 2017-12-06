@@ -2,10 +2,7 @@ package org.globsframework.sqlstreams.utils;
 
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
-import org.globsframework.metamodel.fields.BlobField;
-import org.globsframework.metamodel.fields.IntegerField;
-import org.globsframework.metamodel.fields.LongField;
-import org.globsframework.metamodel.fields.StringField;
+import org.globsframework.metamodel.fields.*;
 import org.globsframework.sqlstreams.CreateBuilder;
 import org.globsframework.sqlstreams.SqlConnection;
 import org.globsframework.sqlstreams.SqlRequest;
@@ -47,6 +44,16 @@ public class MultiCreateBuilder implements CreateBuilder {
         return this;
     }
 
+    public CreateBuilder set(DoubleField field, Double value) {
+        createBuilders.get(field.getGlobType()).set(field, value);
+        return this;
+    }
+
+    public CreateBuilder set(BooleanField field, Boolean value) {
+        createBuilders.get(field.getGlobType()).set(field, value);
+        return this;
+    }
+
     public CreateBuilder set(IntegerField field, IntegerAccessor accessor) {
         createBuilders.get(field.getGlobType()).set(field, accessor);
         return this;
@@ -58,6 +65,16 @@ public class MultiCreateBuilder implements CreateBuilder {
     }
 
     public CreateBuilder set(StringField field, StringAccessor accessor) {
+        createBuilders.get(field.getGlobType()).set(field, accessor);
+        return this;
+    }
+
+    public CreateBuilder set(DoubleField field, DoubleAccessor accessor) {
+        createBuilders.get(field.getGlobType()).set(field, accessor);
+        return this;
+    }
+
+    public CreateBuilder set(BooleanField field, BooleanAccessor accessor) {
         createBuilders.get(field.getGlobType()).set(field, accessor);
         return this;
     }
