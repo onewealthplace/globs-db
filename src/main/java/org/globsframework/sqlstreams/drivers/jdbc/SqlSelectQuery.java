@@ -102,10 +102,10 @@ public class SqlSelectQuery implements SelectQuery {
 
     public GlobList executeAsGlobs() {
         GlobStream globStream = execute();
-        AccessorGlobBuilder accessorGlobBuilder = AccessorGlobBuilder.init(globStream);
+        AccessorGlobsBuilder accessorGlobsBuilder = AccessorGlobsBuilder.init(globStream);
         GlobList result = new GlobList();
         while (globStream.next()) {
-            result.addAll(accessorGlobBuilder.getGlobs());
+            result.addAll(accessorGlobsBuilder.getGlobs());
         }
         return result;
     }

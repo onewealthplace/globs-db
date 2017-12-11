@@ -11,30 +11,34 @@ import org.globsframework.utils.collections.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class AccessorGlobBuilder {
-    private MultiMap<GlobType, Pair<Field, Accessor>> accessors = new MultiMap<GlobType, Pair<Field, Accessor>>();
+    private final GlobType type;
+    private List<Pair<Field, Accessor>> accessors = new ArrayList<>();
 
     public AccessorGlobBuilder(GlobStream globStream) {
+        GlobType globType = null;
         for (Field field : globStream.getFields()) {
-            accessors.put(field.getGlobType(), new Pair<Field, Accessor>(field, globStream.getAccessor(field)));
+            if (globType == null) {
+                globType = field.getGlobType();
+            } else if (globType != field.getGlobType()) {
+                throw new RuntimeException("Multiple type " + globType.getName() + " and " + field.getGlobType().getName());
+            }
+            accessors.add(new Pair<>(field, globStream.getAccessor(field)));
         }
+        type = globType;
     }
 
     public static AccessorGlobBuilder init(GlobStream globStream) {
         return new AccessorGlobBuilder(globStream);
     }
 
-    public List<Glob> getGlobs() {
-        List globs = new ArrayList();
-        for (Map.Entry<GlobType, List<Pair<Field, Accessor>>> entry : accessors.entries()) {
-            MutableGlob defaultGlob = entry.getKey().instantiate();
-            for (Pair<Field, Accessor> pair : entry.getValue()) {
-                defaultGlob.setValue(pair.getFirst(), pair.getSecond().getObjectValue());
-            }
-            globs.add(defaultGlob);
+    public Glob getGlob() {
+        MutableGlob defaultGlob = type.instantiate();
+        for (Pair<Field, Accessor> pair : accessors) {
+            defaultGlob.setValue(pair.getFirst(), pair.getSecond().getObjectValue());
+
         }
-        return globs;
+        return defaultGlob;
     }
 }

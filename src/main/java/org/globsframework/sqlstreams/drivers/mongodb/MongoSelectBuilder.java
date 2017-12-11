@@ -11,6 +11,7 @@ import org.globsframework.sqlstreams.SelectQuery;
 import org.globsframework.sqlstreams.SqlService;
 import org.globsframework.sqlstreams.annotations.DbRef;
 import org.globsframework.sqlstreams.annotations.IsBigDecimal;
+import org.globsframework.sqlstreams.constraints.Constraint;
 import org.globsframework.sqlstreams.drivers.mongodb.accessor.*;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.Ref;
@@ -27,15 +28,17 @@ public class MongoSelectBuilder implements SelectBuilder {
     private final MongoDatabase mongoDatabase;
     private final GlobType globType;
     private final MongoCollection<Document> collection;
-    private final SqlService sqlService;
+    private final MongoDbService sqlService;
+    private Constraint constraint;
     private final Map<Field, Accessor> fieldsAndAccessor = new HashMap<>();
     private final Ref<Document> currentDoc = new Ref<>();
 
-    public MongoSelectBuilder(MongoDatabase mongoDatabase, GlobType globType, SqlService sqlService) {
+    public MongoSelectBuilder(MongoDatabase mongoDatabase, GlobType globType, MongoDbService sqlService, Constraint constraint) {
         this.mongoDatabase = mongoDatabase;
         this.globType = globType;
         this.sqlService = sqlService;
-        if (LOGGER.isDebugEnabled()) {
+        this.constraint = constraint;
+//        if (LOGGER.isDebugEnabled()) {
             CompletableFuture completableFuture = new CompletableFuture();
             mongoDatabase.listCollections().forEach(document -> LOGGER.debug(document.toJson()), (result, t) -> {
                 completableFuture.complete(null);
@@ -45,12 +48,12 @@ public class MongoSelectBuilder implements SelectBuilder {
             } catch (Exception e) {
                 throw new RuntimeException("Fail to connect to db ");
             }
-        }
+//        }
         collection = mongoDatabase.getCollection(sqlService.getTableName(globType), Document.class);
     }
 
     public SelectQuery getQuery() {
-        return new MongoSelectQuery(collection, fieldsAndAccessor, currentDoc, globType, sqlService);
+        return new MongoSelectQuery(collection, fieldsAndAccessor, currentDoc, globType, sqlService, constraint);
     }
 
     public SelectQuery getNotAutoCloseQuery() {
@@ -88,7 +91,7 @@ public class MongoSelectBuilder implements SelectBuilder {
 
     public SelectBuilder select(StringField field, Ref<StringAccessor> accessor) {
         if (field.hasAnnotation(DbRef.KEY)) {
-            accessor.set(new RefStringMongoAccessor(sqlService.getColumnName(field), currentDoc));
+            accessor.set(new RefStringMongoAccessor(sqlService.getFirstLevelColumnName(field), currentDoc));
         } else if (field.isKeyField() && field.getGlobType().getKeyFields().length == 1) {
             accessor.set(new KeyStringMongoAccessor(sqlService.getColumnName(field), currentDoc));
         } else {
@@ -125,7 +128,7 @@ public class MongoSelectBuilder implements SelectBuilder {
     public StringAccessor retrieve(StringField field) {
         StringAccessor stringAccessor;
         if (field.hasAnnotation(DbRef.KEY)) {
-            stringAccessor = new RefStringMongoAccessor(sqlService.getColumnName(field), currentDoc);
+            stringAccessor = new RefStringMongoAccessor(sqlService.getFirstLevelColumnName(field), currentDoc);
         } else if (field.isKeyField() && field.getGlobType().getKeyFields().length == 1) {
             stringAccessor = new KeyStringMongoAccessor(sqlService.getColumnName(field), currentDoc);
         } else {

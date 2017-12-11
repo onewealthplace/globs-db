@@ -28,19 +28,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class MongoDbConnection implements SqlConnection {
     MongoDatabase mongoDatabase;
-    SqlService sqlService;
+    MongoDbService sqlService;
 
-    public MongoDbConnection(MongoDatabase mongoDatabase, SqlService sqlService) {
+    public MongoDbConnection(MongoDatabase mongoDatabase, MongoDbService sqlService) {
         this.mongoDatabase = mongoDatabase;
         this.sqlService = sqlService;
     }
 
     public SelectBuilder getQueryBuilder(GlobType globType) {
-        return new MongoSelectBuilder(mongoDatabase, globType, sqlService);
+        return new MongoSelectBuilder(mongoDatabase, globType, sqlService, null);
     }
 
     public SelectBuilder getQueryBuilder(GlobType globType, Constraint constraint) {
-        return null;
+        return new MongoSelectBuilder(mongoDatabase, globType, sqlService, constraint);
     }
 
     public CreateBuilder getCreateBuilder(GlobType globType) {

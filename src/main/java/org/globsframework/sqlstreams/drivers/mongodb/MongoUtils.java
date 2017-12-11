@@ -88,13 +88,7 @@ public class MongoUtils {
     }
 
     public static String getFullDbName(Field field) {
-        Glob name = field.findAnnotation(DbFieldName.KEY);
-        String dbName;
-        if (name != null) {
-            dbName = name.get(DbFieldName.NAME);
-        } else {
-            dbName = field.getName();
-        }
+        String dbName = getDbName(field);
         if (field.hasAnnotation(DbRef.KEY)) {
             return dbName + '.' + DB_REF_ID_EXT;
         } else {
