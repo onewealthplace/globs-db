@@ -3,6 +3,7 @@ package OWP_GlobsDb.buildTypes
 import jetbrains.buildServer.configs.kotlin.v2017_2.*
 import jetbrains.buildServer.configs.kotlin.v2017_2.buildSteps.gradle
 import jetbrains.buildServer.configs.kotlin.v2017_2.triggers.vcs
+import jetbrains.buildServer.configs.kotlin.v2017_2.buildFeatures.commitStatusPublisher
 
 object OWP_GlobsDb_Build : BuildType({
     uuid = "33f9b299-dff2-4339-8ad9-317c6c3e2c7e"
