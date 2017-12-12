@@ -35,6 +35,17 @@ object OWP_GlobsDb_Build : BuildType({
         }
     }
 
+    features {
+        commitStatusPublisher {
+            publisher = github {
+                githubUrl = "https://api.github.com"
+                authType = personalToken {
+                    token = "credentialsJSON:5bc09a01-94ad-44aa-a6d6-3e1fcc90d6c2"
+                }
+            }
+        }
+    }
+
     triggers {
         vcs {
         }
