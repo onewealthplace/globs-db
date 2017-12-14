@@ -1,6 +1,5 @@
 package org.globsframework.sqlstreams.drivers.mongodb;
 
-import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollection;
 import com.mongodb.async.client.MongoDatabase;
 import org.bson.Document;
@@ -19,11 +18,8 @@ import org.globsframework.streams.accessors.*;
 import org.globsframework.streams.accessors.utils.*;
 
 import java.sql.Connection;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MongoDbConnection implements SqlConnection {
@@ -48,19 +44,18 @@ public class MongoDbConnection implements SqlConnection {
     }
 
     public UpdateBuilder getUpdateBuilder(GlobType globType, Constraint constraint) {
-        return null;
+        throw new RuntimeException("Not Implemented");
     }
 
     public SqlRequest getDeleteRequest(GlobType globType) {
-        return null;
+        throw new RuntimeException("Not Implemented");
     }
 
     public SqlRequest getDeleteRequest(GlobType globType, Constraint constraint) {
-        return null;
+        throw new RuntimeException("Not Implemented");
     }
 
     public void commit() throws RollbackFailed, DbConstraintViolation {
-
     }
 
     public void commitAndClose() throws RollbackFailed, DbConstraintViolation {
@@ -72,21 +67,22 @@ public class MongoDbConnection implements SqlConnection {
     }
 
     public Connection getConnection() {
-        return null;
+        throw new RuntimeException("Not Implemented");
     }
 
     public void createTable(GlobType... globType) {
-
+        throw new RuntimeException("Not Implemented");
     }
 
     public void emptyTable(GlobType... globType) {
-
+        throw new RuntimeException("Not Implemented");
     }
 
     public void showDb() {
     }
 
     public void populate(GlobList all) {
+        MongoUtils.fill(all, sqlService);
     }
 
     private static class MongoCreateBuilder implements CreateBuilder {
@@ -196,15 +192,15 @@ public class MongoDbConnection implements SqlConnection {
         }
 
         public SqlRequest getRequest() {
-            return new MongoSqlRequest(mongoDatabase.getCollection(sqlService.getTableName(globType)), fieldsValues);
+            return new MongoCreateSqlRequest(mongoDatabase.getCollection(sqlService.getTableName(globType)), fieldsValues);
         }
 
-        private static class MongoSqlRequest implements SqlRequest {
+        private static class MongoCreateSqlRequest implements SqlRequest {
             private MongoCollection<Document> collection;
             private Map<Field, Accessor> fieldsValues;
             private AtomicInteger count = new AtomicInteger();
 
-            public MongoSqlRequest(MongoCollection<Document> collection, Map<Field, Accessor> fieldsValues) {
+            public MongoCreateSqlRequest(MongoCollection<Document> collection, Map<Field, Accessor> fieldsValues) {
                 this.collection = collection;
                 this.fieldsValues = fieldsValues;
             }
@@ -226,8 +222,8 @@ public class MongoDbConnection implements SqlConnection {
 
                 collection.insertOne(doc, (result, t) -> {
                     count.decrementAndGet();
-                    synchronized (MongoSqlRequest.this) {
-                        MongoSqlRequest.this.notify();
+                    synchronized (MongoCreateSqlRequest.this) {
+                        MongoCreateSqlRequest.this.notify();
                     }
                 });
                 //increment after to be sure that no execption was thrown in insertOne
