@@ -131,7 +131,10 @@ public class MongoSelectBuilder implements SelectBuilder {
             stringAccessor = new RefStringMongoAccessor(sqlService.getFirstLevelColumnName(field), currentDoc);
         } else if (field.isKeyField() && field.getGlobType().getKeyFields().length == 1) {
             stringAccessor = new KeyStringMongoAccessor(sqlService.getColumnName(field), currentDoc);
-        } else {
+        } else if (field.getName().equals("_id") || field.getName().equals("_uuid"))  {                //  TODO TBR
+            stringAccessor = new KeyStringMongoAccessor(sqlService.getColumnName(field), currentDoc);
+        }
+        else {
             stringAccessor = new StringMongoAccessor(sqlService.getColumnName(field), currentDoc);
         }
         fieldsAndAccessor.put(field, stringAccessor);
