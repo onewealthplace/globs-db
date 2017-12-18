@@ -198,6 +198,26 @@ public class SqlSelectQueryTest extends DbServicesTestCase {
     }
 
     @Test
+    public void OrderAndLimit() {
+        populate(sqlConnection,
+              XmlGlobStreamReader.parse(
+                    "<dummyObject id='1' name='hello' value='1.1' present='true'/>" +
+                          "<dummyObject id='3' name='world' value='2.2' present='false'/>" +
+                          "<dummyObject id='4' name='world' value='2.2' present='false'/>" +
+                          "<dummyObject id='5' name='world' value='2.2' present='false'/>" +
+                          "<dummyObject id='6' name='world' value='2.2' present='false'/>" +
+                          "<dummyObject id='7' name='world' value='2.2' present='false'/>", directory.get(GlobModel.class)));
+        Integer[] values = {1, 2, 3, 4, 5};
+        GlobList list = sqlConnection.getQueryBuilder(DummyObject.TYPE,
+              Constraints.in(DummyObject.ID, Arrays.asList(values)))
+              .orderDesc(DummyObject.ID).orderAsc(DummyObject.VALUE)
+              .top(1)
+              .getQuery().executeAsGlobs();
+        assertEquals(1, list.size());
+        assertEquals(5, list.get(0).get(DummyObject.ID).intValue());
+    }
+
+    @Test
     public void testNotEqual() throws Exception {
         populate(sqlConnection,
               XmlGlobStreamReader.parse(

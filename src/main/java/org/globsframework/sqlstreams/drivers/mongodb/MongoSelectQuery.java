@@ -1,7 +1,9 @@
 package org.globsframework.sqlstreams.drivers.mongodb;
 
+import com.mongodb.async.client.FindIterable;
 import com.mongodb.async.client.MongoCollection;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Sorts;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -25,10 +27,7 @@ import org.globsframework.utils.exceptions.TooManyItems;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Spliterators;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,9 +49,11 @@ public class MongoSelectQuery implements SelectQuery {
     private final String requete;
     private SqlService sqlService;
     private Constraint constraint;
+    private final List<MongoSelectBuilder.Order> orders;
+    private final int top;
 
     public MongoSelectQuery(MongoCollection<Document> collection, Map<Field, Accessor> fieldsAndAccessor,
-                            Ref<Document> currentDoc, GlobType globType, SqlService sqlService, Constraint constraint) {
+                            Ref<Document> currentDoc, GlobType globType, SqlService sqlService, Constraint constraint, List<MongoSelectBuilder.Order> orders, int top) {
         this.collection = collection;
         this.fieldsAndAccessor = fieldsAndAccessor;
         this.currentDoc = currentDoc;
@@ -60,8 +61,9 @@ public class MongoSelectQuery implements SelectQuery {
         requete = "select on " + globType.getName();
         this.sqlService = sqlService;
         this.constraint = constraint;
+        this.orders = orders;
+        this.top = top;
     }
-
 
     public Stream<?> executeAsStream() {
         DocumentsIterator iterator = getDocumentsIterator();
@@ -82,9 +84,26 @@ public class MongoSelectQuery implements SelectQuery {
         }
 
         Bson include = include(fieldsAndAccessor.keySet()
-              .stream().map(sqlService::getColumnName).collect(Collectors.toList()));
-        collection.find()
-              .filter(filter)
+              .stream()
+              .map(sqlService::getColumnName).collect(Collectors.toList()));
+        FindIterable<Document> findIterable = collection.find()
+              .filter(filter);
+        if (!orders.isEmpty()) {
+            List<Bson> bsonOrders = new ArrayList<>();
+            for (MongoSelectBuilder.Order order : orders) {
+                if (order.asc) {
+                    bsonOrders.add(Sorts.ascending(sqlService.getColumnName(order.field)));
+                }
+                else {
+                    bsonOrders.add(Sorts.descending(sqlService.getColumnName(order.field)));
+                }
+            }
+            findIterable.sort(Sorts.orderBy(bsonOrders));
+        }
+        if (top != -1) {
+            findIterable.limit(top);
+        }
+        findIterable
               .projection(include)
               .forEach(document -> {
                   if (document != null) {

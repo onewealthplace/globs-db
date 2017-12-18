@@ -11,11 +11,14 @@ import org.globsframework.sqlstreams.constraints.Constraint;
 import org.globsframework.sqlstreams.drivers.jdbc.BlobUpdater;
 import org.globsframework.sqlstreams.drivers.jdbc.SqlSelectQuery;
 import org.globsframework.sqlstreams.drivers.jdbc.impl.FieldToSqlAccessorVisitor;
+import org.globsframework.sqlstreams.drivers.mongodb.MongoSelectBuilder;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.Ref;
 
 import java.sql.Connection;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SqlQueryBuilder implements SelectBuilder {
@@ -26,6 +29,18 @@ public class SqlQueryBuilder implements SelectBuilder {
     private BlobUpdater blobUpdater;
     private boolean autoClose = true;
     private Map<Field, SqlAccessor> fieldToAccessorHolder = new HashMap<Field, SqlAccessor>();
+    private final List<Order> orders = new ArrayList<>();
+    private int top = -1;
+
+    public static class Order {
+        public final Field field;
+        public final boolean asc;
+
+        public Order(Field field, boolean asc) {
+            this.field = field;
+            this.asc = asc;
+        }
+    }
 
     public SqlQueryBuilder(Connection connection, GlobType globType, Constraint constraint, SqlService sqlService, BlobUpdater blobUpdater) {
         this.connection = connection;
@@ -38,7 +53,7 @@ public class SqlQueryBuilder implements SelectBuilder {
     public SelectQuery getQuery() {
         try {
             completeWithKeys();
-            return new SqlSelectQuery(connection, constraint, fieldToAccessorHolder, sqlService, blobUpdater, autoClose);
+            return new SqlSelectQuery(connection, constraint, fieldToAccessorHolder, sqlService, blobUpdater, autoClose, orders, top);
         } finally {
             fieldToAccessorHolder.clear();
         }
@@ -93,6 +108,21 @@ public class SqlQueryBuilder implements SelectBuilder {
 
     public SelectBuilder select(BlobField field, Ref<BlobAccessor> accessor) {
         return createAccessor(field, accessor, new BlobSqlAccessor());
+    }
+
+    public SelectBuilder orderAsc(Field field) {
+        orders.add(new Order(field, true));
+        return this;
+    }
+
+    public SelectBuilder orderDesc(Field field) {
+        orders.add(new Order(field, false));
+        return this;
+    }
+
+    public SelectBuilder top(int n) {
+        top = n;
+        return this;
     }
 
     public BooleanAccessor retrieve(BooleanField field) {

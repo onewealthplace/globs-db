@@ -10,6 +10,7 @@ import org.globsframework.sqlstreams.accessors.SqlAccessor;
 import org.globsframework.sqlstreams.constraints.Constraint;
 import org.globsframework.sqlstreams.drivers.jdbc.impl.ValueConstraintVisitor;
 import org.globsframework.sqlstreams.drivers.jdbc.impl.WhereClauseConstraintVisitor;
+import org.globsframework.sqlstreams.drivers.jdbc.request.SqlQueryBuilder;
 import org.globsframework.sqlstreams.utils.StringPrettyWriter;
 import org.globsframework.streams.GlobStream;
 import org.globsframework.utils.exceptions.ItemNotFound;
@@ -29,17 +30,21 @@ public class SqlSelectQuery implements SelectQuery {
     private boolean autoClose;
     private Map<Field, SqlAccessor> fieldToAccessorHolder;
     private SqlService sqlService;
+    private final List<SqlQueryBuilder.Order> orders;
+    private final int top;
     private PreparedStatement preparedStatement;
     private String sql;
 
     public SqlSelectQuery(Connection connection, Constraint constraint,
                           Map<Field, SqlAccessor> fieldToAccessorHolder, SqlService sqlService,
-                          BlobUpdater blobUpdater, boolean autoClose) {
+                          BlobUpdater blobUpdater, boolean autoClose, List<SqlQueryBuilder.Order> orders, int top) {
         this.constraint = constraint;
         this.blobUpdater = blobUpdater;
         this.autoClose = autoClose;
         this.fieldToAccessorHolder = new HashMap<>(fieldToAccessorHolder);
         this.sqlService = sqlService;
+        this.orders = orders;
+        this.top = top;
         sql = prepareSqlRequest();
         try {
             preparedStatement = connection.prepareStatement(sql);
@@ -70,6 +75,7 @@ public class SqlSelectQuery implements SelectQuery {
             where.append(" WHERE ");
             constraint.visit(new WhereClauseConstraintVisitor(where, sqlService, globTypes));
         }
+
         prettyWriter.append(" from ");
         for (Iterator it = globTypes.iterator(); it.hasNext(); ) {
             GlobType globType = (GlobType) it.next();
@@ -78,6 +84,24 @@ public class SqlSelectQuery implements SelectQuery {
         }
         if (where != null) {
             prettyWriter.append(where.toString());
+        }
+
+        if (!orders.isEmpty()) {
+            prettyWriter.append(" ORDER BY ");
+            for (SqlQueryBuilder.Order order : orders) {
+                prettyWriter.append(sqlService.getColumnName(order.field));
+                if (order.asc) {
+                    prettyWriter.append(" ASC");
+                }
+                else {
+                    prettyWriter.append(" DESC");
+                }
+                prettyWriter.append(", ");
+            }
+            prettyWriter.removeLast().removeLast();
+        }
+        if (top != -1) {
+            prettyWriter.append(" LIMIT " + top);
         }
         return prettyWriter.toString();
     }

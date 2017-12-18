@@ -8,7 +8,6 @@ import org.globsframework.metamodel.GlobType;
 import org.globsframework.metamodel.fields.*;
 import org.globsframework.sqlstreams.SelectBuilder;
 import org.globsframework.sqlstreams.SelectQuery;
-import org.globsframework.sqlstreams.SqlService;
 import org.globsframework.sqlstreams.annotations.DbRef;
 import org.globsframework.sqlstreams.annotations.IsBigDecimal;
 import org.globsframework.sqlstreams.constraints.Constraint;
@@ -18,7 +17,9 @@ import org.globsframework.utils.Ref;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -32,6 +33,18 @@ public class MongoSelectBuilder implements SelectBuilder {
     private Constraint constraint;
     private final Map<Field, Accessor> fieldsAndAccessor = new HashMap<>();
     private final Ref<Document> currentDoc = new Ref<>();
+    private final List<Order> orders = new ArrayList<>();
+    private int top = - 1;
+
+    static class Order {
+        public final Field field;
+        public final boolean asc;
+
+        public Order(Field field, boolean asc) {
+            this.field = field;
+            this.asc = asc;
+        }
+    }
 
     public MongoSelectBuilder(MongoDatabase mongoDatabase, GlobType globType, MongoDbService sqlService, Constraint constraint) {
         this.mongoDatabase = mongoDatabase;
@@ -53,7 +66,7 @@ public class MongoSelectBuilder implements SelectBuilder {
     }
 
     public SelectQuery getQuery() {
-        return new MongoSelectQuery(collection, fieldsAndAccessor, currentDoc, globType, sqlService, constraint);
+        return new MongoSelectQuery(collection, fieldsAndAccessor, currentDoc, globType, sqlService, constraint, orders, top);
     }
 
     public SelectQuery getNotAutoCloseQuery() {
@@ -110,6 +123,21 @@ public class MongoSelectBuilder implements SelectBuilder {
     public SelectBuilder select(BlobField field, Ref<BlobAccessor> accessor) {
         accessor.set(new BlobMongoAccessor(sqlService.getColumnName(field), currentDoc));
         fieldsAndAccessor.put(field, accessor.get());
+        return this;
+    }
+
+    public SelectBuilder orderAsc(Field field) {
+        orders.add(new Order(field, true));
+        return this;
+    }
+
+    public SelectBuilder orderDesc(Field field) {
+        orders.add(new Order(field, false));
+        return this;
+    }
+
+    public SelectBuilder top(int n) {
+        top = n;
         return this;
     }
 

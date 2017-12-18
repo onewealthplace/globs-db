@@ -29,6 +29,12 @@ public interface SelectBuilder {
 
     SelectBuilder select(BlobField field, Ref<BlobAccessor> accessor);
 
+    SelectBuilder orderAsc(Field field);
+
+    SelectBuilder orderDesc(Field field);
+
+    SelectBuilder top(int n);
+
     IntegerAccessor retrieve(IntegerField field);
 
     LongAccessor retrieve(LongField field);

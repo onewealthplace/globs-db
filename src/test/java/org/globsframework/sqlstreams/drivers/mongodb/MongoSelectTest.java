@@ -30,7 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import static org.globsframework.sqlstreams.drivers.mongodb.MongoSelectTest.DummyObject.NAME_INDEX;
+import static org.globsframework.sqlstreams.drivers.mongodb.MongoSelectTest.DummyObject.*;
 
 public class MongoSelectTest {
     @Rule
@@ -52,21 +52,22 @@ public class MongoSelectTest {
                   }
               }));
 
-//        MongoCollection<Document> globMongoCollection = database
-//              .getCollection(sqlService.getTableName(DummyObject.TYPE), Document.class);
-
         insert(globMongoCollection, DummyObject.TYPE.instantiate()
               .set(DummyObject.ID, 1)
               .set(DummyObject.NAME, "name 1")
-              .set(DummyObject.VALUE, 3.14), sqlService);
+              .set(VALUE, 3.14), sqlService);
         insert(globMongoCollection, DummyObject.TYPE.instantiate()
               .set(DummyObject.ID, 2)
               .set(DummyObject.NAME, "name 2")
-              .set(DummyObject.VALUE, 3.14 * 2.), sqlService);
+              .set(VALUE, 3.14 * 2.), sqlService);
         insert(globMongoCollection, DummyObject.TYPE.instantiate()
               .set(DummyObject.ID, 3)
               .set(DummyObject.NAME, "name 3")
-              .set(DummyObject.VALUE, 3.14 * 3.), sqlService);
+              .set(VALUE, 3.14 * 3.), sqlService);
+        insert(globMongoCollection, DummyObject.TYPE.instantiate()
+              .set(DummyObject.ID, 4)
+              .set(DummyObject.NAME, "my name")
+              .set(VALUE, 3.14 * 3.), sqlService);
 
         SqlConnection mangoDbConnection = new MongoDbConnection(database, sqlService);
         GlobList globs = mangoDbConnection.getQueryBuilder(DummyObject.TYPE)
@@ -78,7 +79,17 @@ public class MongoSelectTest {
 
         Assert.assertEquals(globRepository.get(KeyBuilder.newKey(DummyObject.TYPE, 1)).get(DummyObject.NAME), "name 1");
         Assert.assertEquals(globRepository.get(KeyBuilder.newKey(DummyObject.TYPE, 2)).get(DummyObject.NAME), "name 2");
-        Assert.assertEquals(globRepository.get(KeyBuilder.newKey(DummyObject.TYPE, 3)).get(DummyObject.VALUE), 3.14 * 3, 0.01);
+        Assert.assertEquals(globRepository.get(KeyBuilder.newKey(DummyObject.TYPE, 3)).get(VALUE), 3.14 * 3, 0.01);
+
+        GlobList sortedFirstGlob = mangoDbConnection.getQueryBuilder(DummyObject.TYPE)
+              .orderDesc(VALUE)
+              .orderAsc(NAME)
+              .top(1)
+              .selectAll()
+              .getQuery().executeAsGlobs();
+
+        Assert.assertEquals(1, sortedFirstGlob.size());
+        Assert.assertEquals(4, sortedFirstGlob.get(0).get(ID).intValue());
     }
 
     private void insert(MongoCollection<Glob> globMongoCollection, MutableGlob data, MongoDbService sqlService) throws InterruptedException, java.util.concurrent.ExecutionException {
