@@ -28,7 +28,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -71,15 +73,14 @@ public class MongoSelectQuery implements SelectQuery {
     }
 
     private DocumentsIterator getDocumentsIterator() {
-        ArrayBlockingQueue<Document> objects = new ArrayBlockingQueue<Document>(100, false);
+        ArrayBlockingQueue<Document> objects = new ArrayBlockingQueue<Document>(500, false);
 
         Bson filter;
         if (constraint != null) {
             MongoConstraintVisitor constraintVisitor = new MongoConstraintVisitor(sqlService);
             constraint.visit(constraintVisitor);
             filter = constraintVisitor.filter;
-        }
-        else {
+        } else {
             filter = new Document();
         }
 
@@ -93,8 +94,7 @@ public class MongoSelectQuery implements SelectQuery {
             for (MongoSelectBuilder.Order order : orders) {
                 if (order.asc) {
                     bsonOrders.add(Sorts.ascending(sqlService.getColumnName(order.field)));
-                }
-                else {
+                } else {
                     bsonOrders.add(Sorts.descending(sqlService.getColumnName(order.field)));
                 }
             }
@@ -240,28 +240,26 @@ public class MongoSelectQuery implements SelectQuery {
             constraint.getRightOperand().visitOperand(rightOp);
 
             if (leftOp.field != null && rightOp.field == null) {
-                Object value = rightOp.value;
-                if (leftOp.field.hasAnnotation(DbRef.KEY) || (leftOp.field.isKeyField() && leftOp.field.getGlobType().getKeyFields().length == 1)) {
-                    Object value1 = value;
-                    if (value1 instanceof String) {
-                        value = new ObjectId((String) value1);
-                    }
-                    else {
-                        throw new RuntimeException(value1 + " is expected to be a string " + leftOp.field.getFullName());
-                    }
-                }
+                Object value = adaptData(leftOp.field, rightOp.value);
                 filter = Filters.eq(sqlService.getColumnName(leftOp.field), value);
-            }
-            else if (rightOp.field != null && leftOp.field == null) {
-                Object value = leftOp.value;
-                if (rightOp.field.hasAnnotation(DbRef.KEY) || (rightOp.field.isKeyField() && rightOp.field.getGlobType().getKeyFields().length == 1)) {
-                    value = new ObjectId((String) value);
-                }
+            } else if (rightOp.field != null && leftOp.field == null) {
+                Object value = adaptData(rightOp.field, leftOp.value);
                 filter = Filters.eq(sqlService.getColumnName(rightOp.field), value);
-            }
-            else {
+            } else {
                 throw new RuntimeException("Can only call equal between field and value");
             }
+        }
+
+        private Object adaptData(Field field, Object value) {
+            if (field.hasAnnotation(DbRef.KEY) || (field.isKeyField() && field.getGlobType().getKeyFields().length == 1)) {
+                Object value1 = value;
+                if (value1 instanceof String) {
+                    value = new ObjectId((String) value1);
+                } else {
+                    return value;
+                }
+            }
+            return value;
         }
 
         public void visitNotEqual(NotEqualConstraint constraint) {
@@ -271,12 +269,10 @@ public class MongoSelectQuery implements SelectQuery {
             constraint.getRightOperand().visitOperand(rightOp);
 
             if (leftOp.field != null && rightOp.field == null) {
-                filter = Filters.ne(sqlService.getColumnName(leftOp.field), rightOp.value);
-            }
-            else if (rightOp.field != null && leftOp.field == null) {
-                filter = Filters.ne(sqlService.getColumnName(rightOp.field), leftOp.value);
-            }
-            else {
+                filter = Filters.ne(sqlService.getColumnName(leftOp.field), adaptData(leftOp.field, rightOp.value));
+            } else if (rightOp.field != null && leftOp.field == null) {
+                filter = Filters.ne(sqlService.getColumnName(rightOp.field), adaptData(rightOp.field, leftOp.value));
+            } else {
                 throw new RuntimeException("Can only call equal between field and value");
             }
         }
@@ -308,12 +304,10 @@ public class MongoSelectQuery implements SelectQuery {
             constraint.getRightOperand().visitOperand(rightOp);
 
             if (leftOp.field != null && rightOp.field == null) {
-                filter = Filters.lte(sqlService.getColumnName(leftOp.field), rightOp.value);
-            }
-            else if (rightOp.field != null && leftOp.field == null) {
-                filter = Filters.gt(sqlService.getColumnName(rightOp.field), leftOp.value);
-            }
-            else {
+                filter = Filters.lte(sqlService.getColumnName(leftOp.field), adaptData(leftOp.field, rightOp.value));
+            } else if (rightOp.field != null && leftOp.field == null) {
+                filter = Filters.gt(sqlService.getColumnName(rightOp.field), adaptData(rightOp.field, leftOp.value));
+            } else {
                 throw new RuntimeException("Can only call equal between field and value");
             }
         }
@@ -331,7 +325,12 @@ public class MongoSelectQuery implements SelectQuery {
         }
 
         public void visitIn(InConstraint constraint) {
-            throw new RuntimeException("Not implemented");
+            String fieldName = sqlService.getColumnName(constraint.getField());
+            List<Object> converted = new ArrayList<>();
+            for (Object o : constraint.getValues()) {
+                converted.add(adaptData(constraint.getField(), o));
+            }
+            filter = Filters.in(fieldName, converted);
         }
 
         private static class ExtractOperandVisitor implements OperandVisitor {

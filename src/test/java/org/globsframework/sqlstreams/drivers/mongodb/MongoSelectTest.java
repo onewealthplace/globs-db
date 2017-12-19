@@ -21,14 +21,17 @@ import org.globsframework.model.MutableGlob;
 import org.globsframework.model.impl.DefaultGlob;
 import org.globsframework.model.repository.DefaultGlobRepository;
 import org.globsframework.sqlstreams.SqlConnection;
+import org.globsframework.sqlstreams.constraints.Constraints;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static org.globsframework.sqlstreams.drivers.mongodb.MongoSelectTest.DummyObject.*;
 
@@ -38,36 +41,9 @@ public class MongoSelectTest {
 
     @Test
     public void Select() throws Exception {
-        MongoDatabase database = fongoAsyncRule.getDatabase();
-        MongoDbService sqlService = new MongoDbService(database);
-
-        MongoCollection<Glob> globMongoCollection = database
-              .getCollection(sqlService.getTableName(DummyObject.TYPE), Glob.class)
-              .withCodecRegistry(CodecRegistries.fromProviders(new CodecProvider() {
-                  public <T> Codec<T> get(Class<T> aClass, CodecRegistry codecRegistry) {
-                      if (aClass == DefaultGlob.class || aClass == Glob.class) {
-                          return (Codec<T>) new GlobCodec(DummyObject.TYPE, sqlService);
-                      }
-                      return null;
-                  }
-              }));
-
-        insert(globMongoCollection, DummyObject.TYPE.instantiate()
-              .set(DummyObject.ID, 1)
-              .set(DummyObject.NAME, "name 1")
-              .set(VALUE, 3.14), sqlService);
-        insert(globMongoCollection, DummyObject.TYPE.instantiate()
-              .set(DummyObject.ID, 2)
-              .set(DummyObject.NAME, "name 2")
-              .set(VALUE, 3.14 * 2.), sqlService);
-        insert(globMongoCollection, DummyObject.TYPE.instantiate()
-              .set(DummyObject.ID, 3)
-              .set(DummyObject.NAME, "name 3")
-              .set(VALUE, 3.14 * 3.), sqlService);
-        insert(globMongoCollection, DummyObject.TYPE.instantiate()
-              .set(DummyObject.ID, 4)
-              .set(DummyObject.NAME, "my name")
-              .set(VALUE, 3.14 * 3.), sqlService);
+        InitDb initDb = new InitDb().invoke();
+        MongoDatabase database = initDb.getDatabase();
+        MongoDbService sqlService = initDb.getSqlService();
 
         SqlConnection mangoDbConnection = new MongoDbConnection(database, sqlService);
         GlobList globs = mangoDbConnection.getQueryBuilder(DummyObject.TYPE)
@@ -81,6 +57,15 @@ public class MongoSelectTest {
         Assert.assertEquals(globRepository.get(KeyBuilder.newKey(DummyObject.TYPE, 2)).get(DummyObject.NAME), "name 2");
         Assert.assertEquals(globRepository.get(KeyBuilder.newKey(DummyObject.TYPE, 3)).get(VALUE), 3.14 * 3, 0.01);
 
+    }
+
+    @Test
+    public void orderAndLimit() throws ExecutionException, InterruptedException {
+        InitDb initDb = new InitDb().invoke();
+        MongoDatabase database = initDb.getDatabase();
+        MongoDbService sqlService = initDb.getSqlService();
+        SqlConnection mangoDbConnection = new MongoDbConnection(database, sqlService);
+
         GlobList sortedFirstGlob = mangoDbConnection.getQueryBuilder(DummyObject.TYPE)
               .orderDesc(VALUE)
               .orderAsc(NAME)
@@ -90,6 +75,23 @@ public class MongoSelectTest {
 
         Assert.assertEquals(1, sortedFirstGlob.size());
         Assert.assertEquals(4, sortedFirstGlob.get(0).get(ID).intValue());
+    }
+
+    @Test
+    public void testInOp() throws ExecutionException, InterruptedException {
+        InitDb initDb = new InitDb().invoke();
+        MongoDatabase database = initDb.getDatabase();
+        MongoDbService sqlService = initDb.getSqlService();
+        SqlConnection mangoDbConnection = new MongoDbConnection(database, sqlService);
+
+        GlobList sortedFirstGlob = mangoDbConnection.getQueryBuilder(DummyObject.TYPE, Constraints.in(DummyObject.NAME, Arrays.asList("name 1", "name 3")))
+              .selectAll()
+              .orderAsc(DummyObject.ID)
+              .getQuery().executeAsGlobs();
+
+        Assert.assertEquals(2, sortedFirstGlob.size());
+        Assert.assertEquals(1, sortedFirstGlob.get(0).get(ID).intValue());
+        Assert.assertEquals(3, sortedFirstGlob.get(1).get(ID).intValue());
     }
 
     private void insert(MongoCollection<Glob> globMongoCollection, MutableGlob data, MongoDbService sqlService) throws InterruptedException, java.util.concurrent.ExecutionException {
@@ -145,5 +147,50 @@ public class MongoSelectTest {
     }
 
 
+    private class InitDb {
+        private MongoDatabase database;
+        private MongoDbService sqlService;
 
+        public MongoDatabase getDatabase() {
+            return database;
+        }
+
+        public MongoDbService getSqlService() {
+            return sqlService;
+        }
+
+        public InitDb invoke() throws InterruptedException, java.util.concurrent.ExecutionException {
+            database = fongoAsyncRule.getDatabase();
+            sqlService = new MongoDbService(database);
+
+            MongoCollection<Glob> globMongoCollection = database
+                  .getCollection(sqlService.getTableName(DummyObject.TYPE), Glob.class)
+                  .withCodecRegistry(CodecRegistries.fromProviders(new CodecProvider() {
+                      public <T> Codec<T> get(Class<T> aClass, CodecRegistry codecRegistry) {
+                          if (aClass == DefaultGlob.class || aClass == Glob.class) {
+                              return (Codec<T>) new GlobCodec(DummyObject.TYPE, sqlService);
+                          }
+                          return null;
+                      }
+                  }));
+
+            insert(globMongoCollection, DummyObject.TYPE.instantiate()
+                  .set(DummyObject.ID, 1)
+                  .set(DummyObject.NAME, "name 1")
+                  .set(VALUE, 3.14), sqlService);
+            insert(globMongoCollection, DummyObject.TYPE.instantiate()
+                  .set(DummyObject.ID, 2)
+                  .set(DummyObject.NAME, "name 2")
+                  .set(VALUE, 3.14 * 2.), sqlService);
+            insert(globMongoCollection, DummyObject.TYPE.instantiate()
+                  .set(DummyObject.ID, 3)
+                  .set(DummyObject.NAME, "name 3")
+                  .set(VALUE, 3.14 * 3.), sqlService);
+            insert(globMongoCollection, DummyObject.TYPE.instantiate()
+                  .set(DummyObject.ID, 4)
+                  .set(DummyObject.NAME, "my name")
+                  .set(VALUE, 3.14 * 3.), sqlService);
+            return this;
+        }
+    }
 }
