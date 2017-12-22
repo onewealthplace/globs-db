@@ -9,6 +9,7 @@ import org.globsframework.sqlstreams.SelectQuery;
 import org.globsframework.sqlstreams.SqlConnection;
 import org.globsframework.sqlstreams.constraints.Constraint;
 import org.globsframework.sqlstreams.constraints.Constraints;
+import org.globsframework.sqlstreams.drivers.jdbc.request.SqlQueryBuilder;
 import org.globsframework.sqlstreams.exceptions.SqlException;
 import org.globsframework.streams.GlobStream;
 import org.globsframework.streams.accessors.IntegerAccessor;
@@ -22,6 +23,7 @@ import org.junit.Test;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.globsframework.sqlstreams.constraints.Constraints.and;
 import static org.junit.Assert.*;
@@ -92,6 +94,7 @@ public class SqlSelectQueryTest extends DbServicesTestCase {
         SqlConnection sqlConnection = init();
         sqlConnection.getQueryBuilder(DummyObject.TYPE, and(null,
               Constraints.equal(DummyObject.ID, 1)))
+              .withKeys()
               .getQuery().executeUnique();
     }
 
@@ -99,7 +102,7 @@ public class SqlSelectQueryTest extends DbServicesTestCase {
     public void testNullOr() throws Exception {
         SqlConnection sqlConnection = init();
         sqlConnection.getQueryBuilder(DummyObject.TYPE, Constraints.or(null,
-              Constraints.equal(DummyObject.ID, 1)))
+              Constraints.equal(DummyObject.ID, 1))).withKeys()
               .getQuery().executeUnique();
     }
 
@@ -193,7 +196,7 @@ public class SqlSelectQueryTest extends DbServicesTestCase {
                           "<dummyObject id='7' name='world' value='2.2' present='false'/>", directory.get(GlobModel.class)));
         Integer[] values = {1, 2, 3, 4, 5};
         GlobList list = sqlConnection.getQueryBuilder(DummyObject.TYPE,
-              Constraints.in(DummyObject.ID, Arrays.asList(values))).getQuery().executeAsGlobs();
+              Constraints.in(DummyObject.ID, Arrays.asList(values))).withKeys().getQuery().executeAsGlobs();
         assertEquals(4, list.size());
     }
 
@@ -210,6 +213,7 @@ public class SqlSelectQueryTest extends DbServicesTestCase {
         Integer[] values = {1, 2, 3, 4, 5};
         GlobList list = sqlConnection.getQueryBuilder(DummyObject.TYPE,
               Constraints.in(DummyObject.ID, Arrays.asList(values)))
+              .withKeys()
               .orderDesc(DummyObject.ID).orderAsc(DummyObject.VALUE)
               .top(1)
               .getQuery().executeAsGlobs();
@@ -237,12 +241,30 @@ public class SqlSelectQueryTest extends DbServicesTestCase {
         return sqlConnection;
     }
 
+    @Test
+    public void distinct() {
+        populate(sqlConnection,
+              XmlGlobStreamReader.parse(
+                    "<dummyObject id='1' name='hello' value='1.1' present='true'/>" +
+                          "<dummyObject id='3' name='world' value='2.2' present='false'/>" +
+                          "<dummyObject id='4' name='world' value='2.2' present='false'/>" +
+                          "<dummyObject id='5' name='world' value='2.2' present='false'/>" +
+                          "<dummyObject id='6' name='world' value='2.2' present='false'/>" +
+                          "<dummyObject id='7' name='world' value='2.2' present='false'/>", directory.get(GlobModel.class)));
+        GlobList list = ((SqlQueryBuilder) sqlConnection.getQueryBuilder(DummyObject.TYPE)
+              .select(DummyObject.NAME))
+              .distinct(Collections.singletonList(DummyObject.NAME))
+              .getQuery().executeAsGlobs();
+        assertEquals(2, list.size());
+    }
+
     private void checkEmpty(Constraint constraint) {
-        assertTrue(sqlConnection.getQueryBuilder(DummyObject.TYPE, constraint).getQuery().executeAsGlobs().isEmpty());
+        assertTrue(sqlConnection.getQueryBuilder(DummyObject.TYPE, constraint).withKeys().getQuery().executeAsGlobs().isEmpty());
     }
 
     private Glob execute(Constraint constraint) {
         return sqlConnection.getQueryBuilder(DummyObject.TYPE, constraint)
+              .withKeys()
               .getQuery().executeUnique();
     }
 }

@@ -24,9 +24,13 @@ public class AccessorGlobBuilder {
             } else if (globType != field.getGlobType()) {
                 throw new RuntimeException("Multiple type " + globType.getName() + " and " + field.getGlobType().getName());
             }
-            accessors.add(new Pair<>(field, globStream.getAccessor(field)));
+            accessors.add(new Pair<>(field, getAccessor(globStream, field)));
         }
         type = globType;
+    }
+
+    public Accessor getAccessor(GlobStream globStream, Field field) {
+        return globStream.getAccessor(field);
     }
 
     public static AccessorGlobBuilder init(GlobStream globStream) {

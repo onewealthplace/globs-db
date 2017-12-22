@@ -31,6 +31,9 @@ public class MongoUtils {
     private static Logger LOGGER = LoggerFactory.getLogger(MongoUtils.class);
 
     public static void createIndexIfNeeded(MongoCollection<?> collection, Collection<Index> indices) {
+        if (indices.isEmpty()) {
+            return;
+        }
         List<Document> documents = new ArrayList<>();
         ListIndexesIterable<Document> documentListIndexesIterable = collection.listIndexes();
         CompletableFuture<Throwable> future = new CompletableFuture<>();

@@ -16,10 +16,7 @@ import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.Ref;
 
 import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class SqlQueryBuilder implements SelectBuilder {
     private Connection connection;
@@ -31,6 +28,7 @@ public class SqlQueryBuilder implements SelectBuilder {
     private Map<Field, SqlAccessor> fieldToAccessorHolder = new HashMap<Field, SqlAccessor>();
     private final List<Order> orders = new ArrayList<>();
     private int top = -1;
+    private Set<Field> distinct = new HashSet<>();
 
     public static class Order {
         public final Field field;
@@ -52,8 +50,7 @@ public class SqlQueryBuilder implements SelectBuilder {
 
     public SelectQuery getQuery() {
         try {
-            completeWithKeys();
-            return new SqlSelectQuery(connection, constraint, fieldToAccessorHolder, sqlService, blobUpdater, autoClose, orders, top);
+            return new SqlSelectQuery(connection, constraint, fieldToAccessorHolder, sqlService, blobUpdater, autoClose, orders, top, distinct);
         } finally {
             fieldToAccessorHolder.clear();
         }
@@ -62,6 +59,11 @@ public class SqlQueryBuilder implements SelectBuilder {
     public SelectQuery getNotAutoCloseQuery() {
         autoClose = false;
         return getQuery();
+    }
+
+    public SelectBuilder withKeys() {
+        completeWithKeys();
+        return this;
     }
 
     private void completeWithKeys() {
@@ -122,6 +124,11 @@ public class SqlQueryBuilder implements SelectBuilder {
 
     public SelectBuilder top(int n) {
         top = n;
+        return this;
+    }
+
+    public SelectBuilder distinct(Collection<Field> fields) {
+        this.distinct.addAll(fields);
         return this;
     }
 

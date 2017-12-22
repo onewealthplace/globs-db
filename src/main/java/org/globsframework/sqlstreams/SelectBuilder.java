@@ -5,6 +5,8 @@ import org.globsframework.metamodel.fields.*;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.Ref;
 
+import java.util.Collection;
+
 // attention sur le distinct : les valeurs de la clef sont automatiquement ajoutees  ==> faire un distinct a part
 
 public interface SelectBuilder {
@@ -35,6 +37,8 @@ public interface SelectBuilder {
 
     SelectBuilder top(int n);
 
+    SelectBuilder withKeys();
+
     IntegerAccessor retrieve(IntegerField field);
 
     LongAccessor retrieve(LongField field);
@@ -48,4 +52,5 @@ public interface SelectBuilder {
     BlobAccessor retrieve(BlobField field);
 
     Accessor retrieveUnTyped(Field field);
+
 }

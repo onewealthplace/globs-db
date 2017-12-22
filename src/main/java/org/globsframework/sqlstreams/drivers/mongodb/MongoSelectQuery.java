@@ -55,7 +55,8 @@ public class MongoSelectQuery implements SelectQuery {
     private final int top;
 
     public MongoSelectQuery(MongoCollection<Document> collection, Map<Field, Accessor> fieldsAndAccessor,
-                            Ref<Document> currentDoc, GlobType globType, SqlService sqlService, Constraint constraint, List<MongoSelectBuilder.Order> orders, int top) {
+                            Ref<Document> currentDoc, GlobType globType, SqlService sqlService, Constraint constraint,
+                            List<MongoSelectBuilder.Order> orders, int top) {
         this.collection = collection;
         this.fieldsAndAccessor = fieldsAndAccessor;
         this.currentDoc = currentDoc;

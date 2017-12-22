@@ -17,10 +17,7 @@ import org.globsframework.utils.Ref;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 public class MongoSelectBuilder implements SelectBuilder {
@@ -141,6 +138,19 @@ public class MongoSelectBuilder implements SelectBuilder {
         return this;
     }
 
+    public SelectBuilder withKeys() {
+        completeWithKeys();
+        return this;
+    }
+
+    private void completeWithKeys() {
+        for (Field field : globType.getKeyFields()) {
+            if (!fieldsAndAccessor.containsKey(field)) {
+                select(field);
+            }
+        }
+    }
+
     public IntegerAccessor retrieve(IntegerField field) {
         IntegerMongoAccessor longMongoAccessor = new IntegerMongoAccessor(sqlService.getColumnName(field), currentDoc);
         fieldsAndAccessor.put(field, longMongoAccessor);
@@ -194,33 +204,33 @@ public class MongoSelectBuilder implements SelectBuilder {
 
 
     public Accessor retrieveUnTyped(Field field) {
-        throw new RuntimeException("TODO : Not implemented");
+        return field.safeVisit(MONGO_FIELD_VISITOR, this).accessor;
     }
 
     static class MongoFieldVisitor implements FieldVisitorWithContext<MongoSelectBuilder> {
-
+        Accessor accessor;
         public void visitInteger(IntegerField field, MongoSelectBuilder builder) throws Exception {
-            builder.retrieve(field);
+            accessor = builder.retrieve(field);
         }
 
         public void visitDouble(DoubleField field, MongoSelectBuilder builder) throws Exception {
-            builder.retrieve(field);
+            accessor = builder.retrieve(field);
         }
 
         public void visitString(StringField field, MongoSelectBuilder builder) throws Exception {
-            builder.retrieve(field);
+            accessor = builder.retrieve(field);
         }
 
         public void visitBoolean(BooleanField field, MongoSelectBuilder builder) throws Exception {
-            builder.retrieve(field);
+            accessor = builder.retrieve(field);
         }
 
         public void visitLong(LongField field, MongoSelectBuilder builder) throws Exception {
-            builder.retrieve(field);
+            accessor = builder.retrieve(field);
         }
 
         public void visitBlob(BlobField field, MongoSelectBuilder builder) throws Exception {
-            builder.retrieve(field);
+            accessor = builder.retrieve(field);
         }
     }
 

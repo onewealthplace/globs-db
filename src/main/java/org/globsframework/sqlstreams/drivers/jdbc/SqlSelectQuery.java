@@ -32,12 +32,13 @@ public class SqlSelectQuery implements SelectQuery {
     private SqlService sqlService;
     private final List<SqlQueryBuilder.Order> orders;
     private final int top;
+    private Set<Field> distinct;
     private PreparedStatement preparedStatement;
     private String sql;
 
     public SqlSelectQuery(Connection connection, Constraint constraint,
                           Map<Field, SqlAccessor> fieldToAccessorHolder, SqlService sqlService,
-                          BlobUpdater blobUpdater, boolean autoClose, List<SqlQueryBuilder.Order> orders, int top) {
+                          BlobUpdater blobUpdater, boolean autoClose, List<SqlQueryBuilder.Order> orders, int top, Set<Field> distinct) {
         this.constraint = constraint;
         this.blobUpdater = blobUpdater;
         this.autoClose = autoClose;
@@ -45,6 +46,7 @@ public class SqlSelectQuery implements SelectQuery {
         this.sqlService = sqlService;
         this.orders = orders;
         this.top = top;
+        this.distinct = distinct;
         sql = prepareSqlRequest();
         try {
             preparedStatement = connection.prepareStatement(sql);
@@ -64,6 +66,9 @@ public class SqlSelectQuery implements SelectQuery {
             GlobType globType = fieldAndAccessor.getKey().getGlobType();
             globTypes.add(globType);
             String tableName = sqlService.getTableName(globType);
+            if (distinct.contains(fieldAndAccessor.getKey())) {
+                prettyWriter.append(" DISTINCT ");
+            }
             prettyWriter.append(tableName)
                   .append(".")
                   .append(sqlService.getColumnName(fieldAndAccessor.getKey()))
