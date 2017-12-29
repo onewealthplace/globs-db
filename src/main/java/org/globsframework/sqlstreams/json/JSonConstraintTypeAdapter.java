@@ -6,23 +6,29 @@ import com.google.gson.stream.JsonWriter;
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
 import org.globsframework.metamodel.fields.*;
-import org.globsframework.sqlstreams.constraints.Constraint;
-import org.globsframework.sqlstreams.constraints.ConstraintVisitor;
-import org.globsframework.sqlstreams.constraints.Constraints;
-import org.globsframework.sqlstreams.constraints.OperandVisitor;
+import org.globsframework.sqlstreams.constraints.*;
 import org.globsframework.sqlstreams.constraints.impl.*;
+import org.globsframework.utils.Ref;
 
 import java.io.IOException;
 import java.util.*;
 
 public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
     public static final String IN = "in";
+    public static final String NOT_IN = "notIn";
     public static final String OR = "or";
     public static final String AND = "and";
     public static final String LEFT = "left";
     public static final String RIGHT = "right";
     public static final String EQUAL = "equal";
+    public static final String CONTAINS = "contains";
+    public static final String IS_NULL = "isNull";
+    public static final String IS_NOT_NULL = "isNotNull";
     public static final String NOT_EQUAL = "notEqual";
+    public static final String LESS_THAN = "lessThan";
+    public static final String STRICTLY_LESS_THAN = "strictlyLessThan";
+    public static final String GREATER_THAN = "greaterThan";
+    public static final String STRICTLY_GREATER_THAN = "strictlyGreaterThan";
     public static final String VALUE = "value";
     public static final String VALUES = "values";
     public static final String FIELD = "field";
@@ -74,14 +80,30 @@ public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
 
         switch (entry.getKey()) {
             case EQUAL: {
-                Field field = readField(((JsonObject) entry.getValue()).getAsJsonObject(LEFT));
-                Object value = readValue(field, ((JsonObject) entry.getValue()).getAsJsonObject(RIGHT));
-                return new EqualConstraint(new FieldOperand(field), new ValueOperand(field, value));
+                Ref<Operand> leftOp = new Ref<>();
+                Ref<Operand> rightOp = new Ref<>();
+                findField((JsonObject) entry.getValue(), leftOp, rightOp);
+                return new EqualConstraint(leftOp.get(), rightOp.get());
+            }
+            case CONTAINS:{
+                JsonObject in = (JsonObject) entry.getValue();
+                Field field = readField(in);
+                JsonElement jsonElement = in.get(VALUE);
+                return new ContainsConstraint(field, jsonElement.getAsString());
             }
             case NOT_EQUAL: {
-                Field field = readField(((JsonObject) entry.getValue()).getAsJsonObject(LEFT));
-                Object value = readValue(field, ((JsonObject) entry.getValue()).getAsJsonObject(RIGHT));
-                return new NotEqualConstraint(new FieldOperand(field), new ValueOperand(field, value));
+                Ref<Operand> leftOp = new Ref<>();
+                Ref<Operand> rightOp = new Ref<>();
+                findField((JsonObject) entry.getValue(), leftOp, rightOp);
+                return new NotEqualConstraint(leftOp.get(), rightOp.get());
+            }
+            case IS_NULL: {
+                Field field = readField(((JsonObject) entry.getValue()));
+                return new NullOrNotConstraint(field, true);
+            }
+            case IS_NOT_NULL: {
+                Field field = readField(((JsonObject) entry.getValue()));
+                return new NullOrNotConstraint(field, false);
             }
             case AND: {
                 JsonArray array = entry.getValue().getAsJsonArray();
@@ -97,7 +119,7 @@ public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
                 }
                 return constraint;
             }
-            case IN:{
+            case IN: {
                 JsonObject in = (JsonObject) entry.getValue();
                 Field field = readField(in);
                 JsonArray asJsonArray = in.getAsJsonArray(VALUES);
@@ -108,14 +130,82 @@ public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
                 }
                 return Constraints.in(field, values);
             }
+            case NOT_IN: {
+                JsonObject in = (JsonObject) entry.getValue();
+                Field field = readField(in);
+                JsonArray asJsonArray = in.getAsJsonArray(VALUES);
+                JsonFieldValueReaderVisitor visitor = new JsonFieldValueReaderVisitor();
+                List<Object> values = new ArrayList<>();
+                for (JsonElement jsonElement : asJsonArray) {
+                    values.add(field.safeVisit(visitor, jsonElement).value);
+                }
+                return Constraints.notIn(field, values);
+            }
+            case LESS_THAN: {
+                Ref<Operand> leftOp = new Ref<>();
+                Ref<Operand> rightOp = new Ref<>();
+                findField((JsonObject) entry.getValue(), leftOp, rightOp);
+                return new LessThanConstraint(leftOp.get(), rightOp.get());
+            }
+            case STRICTLY_LESS_THAN: {
+                Ref<Operand> leftOp = new Ref<>();
+                Ref<Operand> rightOp = new Ref<>();
+                findField((JsonObject) entry.getValue(), leftOp, rightOp);
+                return new StrictlyLesserThanConstraint(leftOp.get(), rightOp.get());
+            }
+            case GREATER_THAN: {
+                Ref<Operand> leftOp = new Ref<>();
+                Ref<Operand> rightOp = new Ref<>();
+                findField((JsonObject) entry.getValue(), leftOp, rightOp);
+                return new BiggerThanConstraint(leftOp.get(), rightOp.get());
+            }
+            case STRICTLY_GREATER_THAN: {
+                Ref<Operand> leftOp = new Ref<>();
+                Ref<Operand> rightOp = new Ref<>();
+                findField((JsonObject) entry.getValue(), leftOp, rightOp);
+                return new StrictlyBiggerThanConstraint(leftOp.get(), rightOp.get());
+            }
         }
         throw new RuntimeException(entry.getKey() + " not managed");
+    }
+
+    private void findField(JsonObject object, Ref<Operand> leftOp, Ref<Operand> rightOp) {
+        JsonObject left = object.getAsJsonObject(LEFT);
+        JsonObject right = object.getAsJsonObject(RIGHT);
+        JsonObject opposite = null;
+        Ref<Operand> oppositeRef = null;
+        JsonElement fieldObj = left.get(FIELD);
+        Field field;
+        if (fieldObj != null) {
+            field = readField(left);
+            leftOp.set(new FieldOperand(field));
+            opposite = right;
+            oppositeRef = rightOp;
+        }
+        else {
+            fieldObj = right.get(FIELD);
+            if (fieldObj != null) {
+                field = readField(right);
+                rightOp.set(new FieldOperand(field));
+                opposite = left;
+                oppositeRef = leftOp;
+            }
+            else {
+                throw new RuntimeException("At least one of left or right should be a field type");
+            }
+        }
+        if (opposite.get(VALUE) != null) {
+            oppositeRef.set(new ValueOperand(field, readValue(field, opposite)));
+        }
+        else {
+            oppositeRef.set(new FieldOperand(readField(opposite)));
+        }
     }
 
     private Object readValue(Field field, JsonObject jsonElement) {
         JsonElement value = jsonElement.get(VALUE);
         if (value == null) {
-            return null;
+            throw new RuntimeException("A value is expected ");
         }
         return field.safeVisit(new JsonFieldValueReaderVisitor(), value).value;
     }
@@ -131,7 +221,7 @@ public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
         if (name != null) {
             return currentType.getField(name.getAsString());
         }
-        return null;
+        throw new RuntimeException("A field is expected ");
     }
 
     private static class JSonConstraintVisitor implements ConstraintVisitor, OperandVisitor, FieldValueVisitor {
@@ -210,19 +300,39 @@ public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
         }
 
         public void visitLessThan(LessThanConstraint constraint) {
-
+            try {
+                jsonWriter.name(LESS_THAN);
+                visitBinary(constraint);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         public void visitBiggerThan(BiggerThanConstraint constraint) {
-
+            try {
+                jsonWriter.name(LESS_THAN);
+                visitBinary(constraint);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
-        public void visitStricklyBiggerThan(StrictlyBiggerThanConstraint constraint) {
-
+        public void visitStrictlyBiggerThan(StrictlyBiggerThanConstraint constraint) {
+            try {
+                jsonWriter.name(STRICTLY_GREATER_THAN);
+                visitBinary(constraint);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
-        public void visitStricklyLesserThan(StrictlyLesserThanConstraint constraint) {
-
+        public void visitStrictlyLesserThan(StrictlyLesserThanConstraint constraint) {
+            try {
+                jsonWriter.name(STRICTLY_LESS_THAN);
+                visitBinary(constraint);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         public void visitIn(InConstraint constraint) {
@@ -240,6 +350,51 @@ public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        public void visitIsOrNotNull(NullOrNotConstraint constraint) {
+            try {
+                if (constraint.checkNull()) {
+                    jsonWriter.name(IS_NULL);
+                }
+                else {
+                    jsonWriter.name(IS_NOT_NULL);
+                }
+                visitFieldOperand(constraint.getField());
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public void visitNotIn(NotInConstraint constraint) {
+            try {
+                jsonWriter.name(NOT_IN);
+                jsonWriter.beginObject();
+                visitFieldOperand(constraint.getField());
+                jsonWriter.name(VALUES)
+                      .beginArray();
+                for (Object o : constraint.getValues()) {
+                    constraint.getField().safeVisit(this, o);
+                }
+                jsonWriter.endArray();
+                jsonWriter.endObject();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public void visitContains(Field field, String value) {
+            try {
+                jsonWriter.name(CONTAINS);
+                jsonWriter.beginObject();
+                visitFieldOperand(field);
+                jsonWriter.name(VALUE).value(value);
+                jsonWriter.endObject();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
         }
 
         public void visitValueOperand(ValueOperand valueOperand) {

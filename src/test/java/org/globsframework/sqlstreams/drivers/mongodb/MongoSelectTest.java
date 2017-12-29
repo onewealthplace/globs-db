@@ -60,6 +60,58 @@ public class MongoSelectTest {
     }
 
     @Test
+    public void IsNullIsExist() throws ExecutionException, InterruptedException {
+        InitDb initDb = new InitDb().invoke();
+        MongoDatabase database = initDb.getDatabase();
+        MongoDbService sqlService = initDb.getSqlService();
+
+        SqlConnection mangoDbConnection = new MongoDbConnection(database, sqlService);
+        GlobList globs = mangoDbConnection.getQueryBuilder(DummyObject.TYPE, Constraints.isNull(DummyObject.NAME_2))
+              .selectAll()
+              .getQuery()
+              .executeAsGlobs();
+        Assert.assertEquals(3, globs.size());
+
+        globs = mangoDbConnection.getQueryBuilder(DummyObject.TYPE, Constraints.isNotNull(DummyObject.NAME_2))
+              .selectAll()
+              .getQuery()
+              .executeAsGlobs();
+        Assert.assertEquals(1, globs.size());
+    }
+
+
+    @Test
+    public void contains() throws ExecutionException, InterruptedException {
+        InitDb initDb = new InitDb().invoke();
+        MongoDatabase database = initDb.getDatabase();
+        MongoDbService sqlService = initDb.getSqlService();
+
+        SqlConnection mangoDbConnection = new MongoDbConnection(database, sqlService);
+        GlobList globs = mangoDbConnection.getQueryBuilder(DummyObject.TYPE, Constraints.contains(DummyObject.NAME, "2"))
+              .selectAll()
+              .getQuery()
+              .executeAsGlobs();
+        Assert.assertEquals(1, globs.size());
+    }
+
+    @Test
+    public void notIn() throws ExecutionException, InterruptedException {
+        InitDb initDb = new InitDb().invoke();
+        MongoDatabase database = initDb.getDatabase();
+        MongoDbService sqlService = initDb.getSqlService();
+
+        SqlConnection mangoDbConnection = new MongoDbConnection(database, sqlService);
+        GlobList globs = mangoDbConnection.getQueryBuilder(DummyObject.TYPE, Constraints.notIn(DummyObject.NAME, Arrays.asList("name 1", "name 2")))
+              .selectAll()
+              .getQuery()
+              .executeAsGlobs();
+        Assert.assertEquals(2, globs.size());
+        Assert.assertTrue(globs.stream()
+              .map(g -> g.get(DummyObject.NAME))
+              .anyMatch(s -> s.equals("name 3")));
+    }
+
+    @Test
     public void orderAndLimit() throws ExecutionException, InterruptedException {
         InitDb initDb = new InitDb().invoke();
         MongoDatabase database = initDb.getDatabase();
@@ -177,6 +229,7 @@ public class MongoSelectTest {
             insert(globMongoCollection, DummyObject.TYPE.instantiate()
                   .set(DummyObject.ID, 1)
                   .set(DummyObject.NAME, "name 1")
+                  .set(DummyObject.NAME_2, "second name")
                   .set(VALUE, 3.14), sqlService);
             insert(globMongoCollection, DummyObject.TYPE.instantiate()
                   .set(DummyObject.ID, 2)

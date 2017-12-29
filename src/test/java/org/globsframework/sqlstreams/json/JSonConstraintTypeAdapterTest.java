@@ -7,6 +7,7 @@ import org.globsframework.model.DummyObject;
 import org.globsframework.sqlstreams.constraints.Constraint;
 import org.globsframework.sqlstreams.constraints.Constraints;
 import org.globsframework.sqlstreams.constraints.impl.AndConstraint;
+import org.globsframework.sqlstreams.constraints.impl.ContainsConstraint;
 import org.globsframework.sqlstreams.constraints.impl.InConstraint;
 import org.globsframework.sqlstreams.constraints.impl.OrConstraint;
 import org.junit.Assert;
@@ -21,7 +22,8 @@ public class JSonConstraintTypeAdapterTest {
     public void write() {
         Constraint constraint = Constraints.or(Constraints.and(Constraints.equal(DummyObject.NAME, "a name"),
               Constraints.equal(DummyObject.ID, 3)),
-              Constraints.in(DummyObject.VALUE, Arrays.asList(1.1, 2.2)));
+              Constraints.and(Constraints.in(DummyObject.VALUE, Arrays.asList(1.1, 2.2)),
+                    Constraints.contains(DummyObject.NAME, "m")));
         Gson gson = JSonConstraintTypeAdapter.create(name -> DummyObject.TYPE, DummyObject.TYPE);
         String s = gson.toJson(constraint);
         assertEquivalent("{\n" +
@@ -57,28 +59,43 @@ public class JSonConstraintTypeAdapterTest {
               "      ]\n" +
               "    },\n" +
               "    {\n" +
-              "      \"in\": {\n" +
-              "        \"field\": {\n" +
-              "          \"type\": \"dummyObject\",\n" +
-              "          \"name\": \"value\"\n" +
+              "      \"and\": [\n" +
+              "        {\n" +
+              "          \"in\": {\n" +
+              "            \"field\": {\n" +
+              "              \"type\": \"dummyObject\",\n" +
+              "              \"name\": \"value\"\n" +
+              "            },\n" +
+              "            \"values\": [\n" +
+              "              1.1,\n" +
+              "              2.2\n" +
+              "            ]\n" +
+              "          }\n" +
               "        },\n" +
-              "        \"values\": [\n" +
-              "          1.1,\n" +
-              "          2.2\n" +
-              "        ]\n" +
-              "      }\n" +
+              "        {\n" +
+              "          \"contains\": {\n" +
+              "            \"field\": {\n" +
+              "              \"type\": \"dummyObject\",\n" +
+              "              \"name\": \"name\"\n" +
+              "            },\n" +
+              "            \"value\": \"m\"\n" +
+              "          }\n" +
+              "        }\n" +
+              "      ]\n" +
               "    }\n" +
               "  ]\n" +
-              "}\n", s);
+              "}", s);
 
         Constraint constraint1 = gson.fromJson(s, Constraint.class);
         Assert.assertTrue(constraint1 instanceof OrConstraint);
         Assert.assertTrue(((OrConstraint) constraint1).getLeftConstraint() instanceof AndConstraint);
-        Constraint inConstraint = ((OrConstraint) constraint1).getRightConstraint();
+        Constraint andConstraint = ((OrConstraint) constraint1).getRightConstraint();
+        Constraint inConstraint = ((AndConstraint) andConstraint).getLeftConstraint();
         Assert.assertTrue(inConstraint instanceof InConstraint);
         Assert.assertEquals(((InConstraint) inConstraint).getField(), DummyObject.VALUE);
         Assert.assertEquals(((Double) ((InConstraint) inConstraint).getValues().get(0)), 1.1, 0.0001);
-
+        Constraint containsConstraint = ((AndConstraint) andConstraint).getRightConstraint();
+        Assert.assertTrue(containsConstraint instanceof ContainsConstraint);
     }
 
     public static void assertEquivalent(String expected, String actual) {

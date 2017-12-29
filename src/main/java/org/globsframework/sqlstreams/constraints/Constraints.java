@@ -176,6 +176,22 @@ public class Constraints {
         return new NotEqualConstraint(new FieldOperand(field), new ValueOperand(field, value));
     }
 
+    public static Constraint notIn(Field field, List infos) {
+        return new NotInConstraint(field, infos);
+    }
+
+    public static Constraint contains(StringField field, String value) {
+        return new ContainsConstraint(field, value);
+    }
+
+    public static Constraint isNull(Field field) {
+        return new NullOrNotConstraint(field, true);
+    }
+
+    public static Constraint isNotNull(Field field) {
+        return new NullOrNotConstraint(field, false);
+    }
+
     private static class ConstraintsFunctor implements FieldValues.Functor {
         private Constraint constraint = null;
         private final FieldValues key;

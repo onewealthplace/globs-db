@@ -317,11 +317,11 @@ public class MongoSelectQuery implements SelectQuery {
             throw new RuntimeException("Not implemented");
         }
 
-        public void visitStricklyBiggerThan(StrictlyBiggerThanConstraint constraint) {
+        public void visitStrictlyBiggerThan(StrictlyBiggerThanConstraint constraint) {
             throw new RuntimeException("Not implemented");
         }
 
-        public void visitStricklyLesserThan(StrictlyLesserThanConstraint constraint) {
+        public void visitStrictlyLesserThan(StrictlyLesserThanConstraint constraint) {
             throw new RuntimeException("Not implemented");
         }
 
@@ -332,6 +332,30 @@ public class MongoSelectQuery implements SelectQuery {
                 converted.add(adaptData(constraint.getField(), o));
             }
             filter = Filters.in(fieldName, converted);
+        }
+
+        public void visitIsOrNotNull(NullOrNotConstraint constraint) {
+            String fieldName = sqlService.getColumnName(constraint.getField());
+            if (constraint.checkNull()) {
+                filter = Filters.not(Filters.exists(fieldName));
+            }
+            else {
+                filter = Filters.exists(fieldName);
+            }
+        }
+
+        public void visitNotIn(NotInConstraint constraint) {
+            String fieldName = sqlService.getColumnName(constraint.getField());
+            List<Object> converted = new ArrayList<>();
+            for (Object o : constraint.getValues()) {
+                converted.add(adaptData(constraint.getField(), o));
+            }
+            filter = Filters.nin(fieldName, converted);
+
+        }
+
+        public void visitContains(Field field, String value) {
+            filter = Filters.regex(sqlService.getColumnName(field), ".*" + value + ".*");
         }
 
         private static class ExtractOperandVisitor implements OperandVisitor {
