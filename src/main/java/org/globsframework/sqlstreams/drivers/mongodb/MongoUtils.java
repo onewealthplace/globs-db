@@ -15,6 +15,7 @@ import org.globsframework.sqlstreams.SqlRequest;
 import org.globsframework.sqlstreams.SqlService;
 import org.globsframework.sqlstreams.annotations.DbFieldName;
 import org.globsframework.sqlstreams.annotations.DbRef;
+import org.globsframework.sqlstreams.annotations.IsDbKey;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.Ref;
 import org.globsframework.utils.collections.MultiMap;
@@ -84,7 +85,7 @@ public class MongoUtils {
         if (name != null) {
             return name.get(DbFieldName.NAME);
         }
-        if (field.isKeyField() && field.getGlobType().getKeyFields().length == 1) {
+        if (field.isKeyField() && field.hasAnnotation(IsDbKey.KEY)) {
             return ID_FIELD_NAME;
         }
         return field.getName();
