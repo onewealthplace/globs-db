@@ -16,7 +16,19 @@ public class DoubleFromBigDecimalMongoAccessor implements DoubleAccessor {
     }
 
     public Double getDouble() {
-        return currentDoc.get().get(columnName, Decimal128.class).bigDecimalValue().doubleValue();
+        Object o = currentDoc.get().get(columnName);
+        if (o == null) {
+            return null;
+        }
+        if (o instanceof Decimal128) {
+            return ((Decimal128) o).bigDecimalValue().doubleValue();
+        } else if (o instanceof Double) {
+            return (Double) o;
+        } else if (o instanceof Number) {
+            return ((Number) o).doubleValue();
+        } else {
+            throw new RuntimeException("Double type expected but got : " + o.getClass());
+        }
     }
 
     public double getValue(double valueIfNull) {
