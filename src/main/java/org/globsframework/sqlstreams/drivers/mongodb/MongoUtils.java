@@ -61,9 +61,9 @@ public class MongoUtils {
                 return;
             }
         }
-        LOGGER.info("create index " + functionalIndex.getName());
         Document document = new Document();
         functionalIndex.fields().forEach(field -> document.append(getFullDbName(field), 1));
+        LOGGER.info("create index " + functionalIndex.getName()+ " =>" + document);
         collection.createIndex(document, new IndexOptions()
               .unique(functionalIndex.visit(new IsUniqueIndexVisitor()).isUnique())
               .name(functionalIndex.getName()), (result, t) -> {
