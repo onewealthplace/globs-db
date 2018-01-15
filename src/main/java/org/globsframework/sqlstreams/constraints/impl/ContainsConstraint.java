@@ -7,14 +7,16 @@ import org.globsframework.sqlstreams.constraints.ConstraintVisitor;
 public class ContainsConstraint implements Constraint {
     public final Field field;
     public final String value;
+    private boolean contains;
 
-    public ContainsConstraint(Field field, String value) {
+    public ContainsConstraint(Field field, String value, boolean contains) {
         this.field = field;
         this.value = value;
+        this.contains = contains;
     }
 
     public void visit(ConstraintVisitor constraintVisitor) {
-        constraintVisitor.visitContains(field, value);
+        constraintVisitor.visitContains(field, value, contains);
     }
 
 }

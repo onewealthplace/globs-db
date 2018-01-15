@@ -84,8 +84,11 @@ public class WhereClauseConstraintVisitor implements ConstraintVisitor, OperandV
         prettyWriter.append(")");
     }
 
-    public void visitContains(Field field, String value) {
+    public void visitContains(Field field, String value, boolean contains) {
         visitFieldOperand(field);
+        if (!contains) {
+            prettyWriter.append(" NOT ");
+        }
         prettyWriter.append(" LIKE '%" + value + "%'");
     }
 
