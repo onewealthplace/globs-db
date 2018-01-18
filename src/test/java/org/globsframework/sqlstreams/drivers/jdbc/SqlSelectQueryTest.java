@@ -232,6 +232,21 @@ public class SqlSelectQueryTest extends DbServicesTestCase {
         assertEquals(glob.get(DummyObject.ID).intValue(), 3);
     }
 
+    @Test
+    public void testContainsOrNot() throws Exception {
+        populate(sqlConnection,
+              XmlGlobStreamReader.parse(
+                    "<dummyObject id='1' name='hello' value='1.1' present='true'/>" +
+                          "<dummyObject id='3' name='world' value='2.2' present='false'/>", directory.get(GlobModel.class)));
+
+        Glob glob = execute(Constraints.contains(DummyObject.NAME, "hello"));
+        assertEquals(glob.get(DummyObject.ID).intValue(), 1);
+
+        glob = execute(Constraints.notContains(DummyObject.NAME, "hello"));
+        assertEquals(glob.get(DummyObject.ID).intValue(), 3);
+    }
+
+
     private SqlConnection init() {
         GlobStream streamToWrite =
               XmlGlobStreamReader.parse(

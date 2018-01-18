@@ -4,6 +4,7 @@ import com.mongodb.async.client.FindIterable;
 import com.mongodb.async.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Sorts;
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -85,6 +86,7 @@ public class MongoSelectQuery implements SelectQuery {
             filter = new Document();
         }
 
+        LOGGER.info("Request filter : " + filter.toBsonDocument(BsonDocument.class, collection.getCodecRegistry()));
         Bson include = include(fieldsAndAccessor.keySet()
               .stream()
               .map(sqlService::getColumnName).collect(Collectors.toList()));
@@ -354,8 +356,13 @@ public class MongoSelectQuery implements SelectQuery {
 
         }
 
-        public void visitContains(Field field, String value) {
-            filter = Filters.regex(sqlService.getColumnName(field), ".*" + value + ".*");
+        public void visitContains(Field field, String value, boolean contains) {
+            Bson regex = Filters.regex(sqlService.getColumnName(field), ".*" + value + ".*");
+            if (contains) {
+                filter = regex;
+            } else {
+                filter = Filters.not(regex);
+            }
         }
 
         private static class ExtractOperandVisitor implements OperandVisitor {

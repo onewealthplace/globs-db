@@ -98,6 +98,19 @@ public class JSonConstraintTypeAdapterTest {
         Assert.assertTrue(containsConstraint instanceof ContainsConstraint);
     }
 
+    @Test
+    public void containsOrNot() {
+        Constraint constraint = Constraints.and(Constraints.contains(DummyObject.NAME, "a name"),
+              Constraints.notContains(DummyObject.NAME, "aaa"));
+        Gson gson = JSonConstraintTypeAdapter.create(name -> DummyObject.TYPE, DummyObject.TYPE);
+        String s = gson.toJson(constraint);
+        assertEquivalent("{\"and\":[{\"contains\":{\"field\":{\"type\":\"dummyObject\",\"name\":\"name\"},\"value\":\"a name\"}},{\"notContains\":{\"field\":{\"type\":\"dummyObject\",\"name\":\"name\"},\"value\":\"aaa\"}}]}", s);
+        Constraint constraint1 = gson.fromJson(s, Constraint.class);
+        Assert.assertTrue(constraint1 instanceof AndConstraint);
+        Assert.assertTrue(((AndConstraint) constraint1).getLeftConstraint() instanceof ContainsConstraint);
+        Assert.assertTrue(((AndConstraint) constraint1).getRightConstraint() instanceof ContainsConstraint);
+    }
+
     public static void assertEquivalent(String expected, String actual) {
         JsonParser jsonParser = new JsonParser();
         JsonElement expectedTree = jsonParser.parse(expected);

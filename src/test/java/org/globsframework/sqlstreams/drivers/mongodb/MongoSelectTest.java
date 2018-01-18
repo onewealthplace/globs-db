@@ -92,6 +92,12 @@ public class MongoSelectTest {
               .getQuery()
               .executeAsGlobs();
         Assert.assertEquals(1, globs.size());
+
+        globs = mangoDbConnection.getQueryBuilder(DummyObject.TYPE, Constraints.notContains(DummyObject.NAME, "2"))
+              .selectAll()
+              .getQuery()
+              .executeAsGlobs();
+        Assert.assertEquals(3, globs.size());
     }
 
     @Test

@@ -181,7 +181,12 @@ public class Constraints {
     }
 
     public static Constraint contains(StringField field, String value) {
-        return new ContainsConstraint(field, value);
+        return new ContainsConstraint(field, value, true);
+    }
+
+    public static Constraint notContains(StringField field, String value) {
+        return new ContainsConstraint(field, value, false
+        );
     }
 
     public static Constraint isNull(Field field) {

@@ -10,7 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-public interface SelectQuery {
+public interface SelectQuery extends AutoCloseable {
     Stream<?> executeAsStream();
 
     GlobStream execute();
