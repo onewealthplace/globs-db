@@ -37,7 +37,7 @@ public class AccessorGlobBuilder {
         return new AccessorGlobBuilder(globStream);
     }
 
-    public Glob getGlob() {
+    public MutableGlob getGlob() {
         MutableGlob defaultGlob = type.instantiate();
         for (Pair<Field, Accessor> pair : accessors) {
             defaultGlob.setValue(pair.getFirst(), pair.getSecond().getObjectValue());
