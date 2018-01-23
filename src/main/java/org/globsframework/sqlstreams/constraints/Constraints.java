@@ -1,10 +1,7 @@
 package org.globsframework.sqlstreams.constraints;
 
 import org.globsframework.metamodel.Field;
-import org.globsframework.metamodel.fields.DoubleField;
-import org.globsframework.metamodel.fields.IntegerField;
-import org.globsframework.metamodel.fields.LongField;
-import org.globsframework.metamodel.fields.StringField;
+import org.globsframework.metamodel.fields.*;
 import org.globsframework.model.FieldValues;
 import org.globsframework.sqlstreams.constraints.impl.*;
 import org.globsframework.streams.accessors.*;
@@ -195,6 +192,10 @@ public class Constraints {
 
     public static Constraint isNotNull(Field field) {
         return new NullOrNotConstraint(field, false);
+    }
+
+    public static Constraint equal(BooleanField field, boolean value) {
+        return new EqualConstraint(new FieldOperand(field), new ValueOperand(field, value));
     }
 
     private static class ConstraintsFunctor implements FieldValues.Functor {
