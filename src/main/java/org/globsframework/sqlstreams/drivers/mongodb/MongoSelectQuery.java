@@ -86,7 +86,7 @@ public class MongoSelectQuery implements SelectQuery {
             filter = new Document();
         }
 
-        LOGGER.info("Request filter : " + filter.toBsonDocument(BsonDocument.class, collection.getCodecRegistry()));
+        LOGGER.info("Request filter : " + requete + " where " + filter.toBsonDocument(BsonDocument.class, collection.getCodecRegistry()));
         Bson include = include(fieldsAndAccessor.keySet()
               .stream()
               .map(sqlService::getColumnName).collect(Collectors.toList()));
