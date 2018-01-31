@@ -15,8 +15,9 @@ public class ContainsConstraint implements Constraint {
         this.contains = contains;
     }
 
-    public void visit(ConstraintVisitor constraintVisitor) {
-        constraintVisitor.visitContains(field, value, contains);
+    public <T extends ConstraintVisitor> T visit(T visitor) {
+        visitor.visitContains(field, value, contains);
+        return visitor;
     }
 
 }

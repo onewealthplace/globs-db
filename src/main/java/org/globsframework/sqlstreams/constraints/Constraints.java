@@ -8,6 +8,7 @@ import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.exceptions.UnexpectedApplicationState;
 
 import java.util.List;
+import java.util.Set;
 
 public class Constraints {
     private Constraints() {
@@ -165,7 +166,7 @@ public class Constraints {
         return new OrConstraint(arg1, arg2);
     }
 
-    public static Constraint in(Field field, List infos) {
+    public static Constraint in(Field field, Set infos) {
         return new InConstraint(field, infos);
     }
 
@@ -173,7 +174,7 @@ public class Constraints {
         return new NotEqualConstraint(new FieldOperand(field), new ValueOperand(field, value));
     }
 
-    public static Constraint notIn(Field field, List infos) {
+    public static Constraint notIn(Field field, Set infos) {
         return new NotInConstraint(field, infos);
     }
 

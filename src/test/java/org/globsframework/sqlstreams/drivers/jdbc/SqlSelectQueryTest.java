@@ -16,6 +16,7 @@ import org.globsframework.streams.accessors.IntegerAccessor;
 import org.globsframework.streams.accessors.StringAccessor;
 import org.globsframework.streams.accessors.utils.ValueIntegerAccessor;
 import org.globsframework.utils.Ref;
+import org.globsframework.utils.Utils;
 import org.globsframework.xml.XmlGlobStreamReader;
 import org.junit.Assert;
 import org.junit.Test;
@@ -196,7 +197,7 @@ public class SqlSelectQueryTest extends DbServicesTestCase {
                           "<dummyObject id='7' name='world' value='2.2' present='false'/>", directory.get(GlobModel.class)));
         Integer[] values = {1, 2, 3, 4, 5};
         GlobList list = sqlConnection.getQueryBuilder(DummyObject.TYPE,
-              Constraints.in(DummyObject.ID, Arrays.asList(values))).withKeys().getQuery().executeAsGlobs();
+              Constraints.in(DummyObject.ID, Utils.set(values))).withKeys().getQuery().executeAsGlobs();
         assertEquals(4, list.size());
     }
 
@@ -212,7 +213,7 @@ public class SqlSelectQueryTest extends DbServicesTestCase {
                           "<dummyObject id='7' name='world' value='2.2' present='false'/>", directory.get(GlobModel.class)));
         Integer[] values = {1, 2, 3, 4, 5};
         GlobList list = sqlConnection.getQueryBuilder(DummyObject.TYPE,
-              Constraints.in(DummyObject.ID, Arrays.asList(values)))
+              Constraints.in(DummyObject.ID, Utils.set(values)))
               .withKeys()
               .orderDesc(DummyObject.ID).orderAsc(DummyObject.VALUE)
               .top(1)

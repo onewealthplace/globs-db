@@ -13,8 +13,9 @@ public class NullOrNotConstraint implements Constraint {
         this.checkNull = checkNull;
     }
 
-    public void visit(ConstraintVisitor constraintVisitor) {
-        constraintVisitor.visitIsOrNotNull(this);
+    public <T extends ConstraintVisitor> T visit(T visitor) {
+        visitor.visitIsOrNotNull(this);
+        return visitor;
     }
 
     public Field getField() {

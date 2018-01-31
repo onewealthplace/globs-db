@@ -22,6 +22,7 @@ import org.globsframework.model.impl.DefaultGlob;
 import org.globsframework.model.repository.DefaultGlobRepository;
 import org.globsframework.sqlstreams.SqlConnection;
 import org.globsframework.sqlstreams.constraints.Constraints;
+import org.globsframework.utils.Utils;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -107,7 +108,7 @@ public class MongoSelectTest {
         MongoDbService sqlService = initDb.getSqlService();
 
         SqlConnection mangoDbConnection = new MongoDbConnection(database, sqlService);
-        GlobList globs = mangoDbConnection.getQueryBuilder(DummyObject.TYPE, Constraints.notIn(DummyObject.NAME, Arrays.asList("name 1", "name 2")))
+        GlobList globs = mangoDbConnection.getQueryBuilder(DummyObject.TYPE, Constraints.notIn(DummyObject.NAME, Utils.set("name 1", "name 2")))
               .selectAll()
               .getQuery()
               .executeAsGlobs();
@@ -142,7 +143,7 @@ public class MongoSelectTest {
         MongoDbService sqlService = initDb.getSqlService();
         SqlConnection mangoDbConnection = new MongoDbConnection(database, sqlService);
 
-        GlobList sortedFirstGlob = mangoDbConnection.getQueryBuilder(DummyObject.TYPE, Constraints.in(DummyObject.NAME, Arrays.asList("name 1", "name 3")))
+        GlobList sortedFirstGlob = mangoDbConnection.getQueryBuilder(DummyObject.TYPE, Constraints.in(DummyObject.NAME, Utils.set("name 1", "name 3")))
               .selectAll()
               .orderAsc(DummyObject.ID)
               .getQuery().executeAsGlobs();

@@ -10,6 +10,7 @@ import org.globsframework.sqlstreams.constraints.impl.AndConstraint;
 import org.globsframework.sqlstreams.constraints.impl.ContainsConstraint;
 import org.globsframework.sqlstreams.constraints.impl.InConstraint;
 import org.globsframework.sqlstreams.constraints.impl.OrConstraint;
+import org.globsframework.utils.Utils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -22,7 +23,7 @@ public class JSonConstraintTypeAdapterTest {
     public void write() {
         Constraint constraint = Constraints.or(Constraints.and(Constraints.equal(DummyObject.NAME, "a name"),
               Constraints.equal(DummyObject.ID, 3)),
-              Constraints.and(Constraints.in(DummyObject.VALUE, Arrays.asList(1.1, 2.2)),
+              Constraints.and(Constraints.in(DummyObject.VALUE, Utils.set(1.1, 2.2)),
                     Constraints.contains(DummyObject.NAME, "m")));
         Gson gson = JSonConstraintTypeAdapter.create(name -> DummyObject.TYPE, DummyObject.TYPE);
         String s = gson.toJson(constraint);
@@ -93,7 +94,7 @@ public class JSonConstraintTypeAdapterTest {
         Constraint inConstraint = ((AndConstraint) andConstraint).getLeftConstraint();
         Assert.assertTrue(inConstraint instanceof InConstraint);
         Assert.assertEquals(((InConstraint) inConstraint).getField(), DummyObject.VALUE);
-        Assert.assertEquals(((Double) ((InConstraint) inConstraint).getValues().get(0)), 1.1, 0.0001);
+        Assert.assertTrue(((InConstraint) inConstraint).getValues().contains(1.1));
         Constraint containsConstraint = ((AndConstraint) andConstraint).getRightConstraint();
         Assert.assertTrue(containsConstraint instanceof ContainsConstraint);
     }

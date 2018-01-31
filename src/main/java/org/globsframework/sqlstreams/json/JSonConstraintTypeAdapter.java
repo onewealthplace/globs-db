@@ -43,6 +43,10 @@ public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
               .registerTypeHierarchyAdapter(Constraint.class, new JSonConstraintTypeAdapter(globTypeResolver, currentType));
     }
 
+    static public GsonBuilder register(GsonBuilder gsonBuilder, GlobTypeResolver globTypeResolver, GlobType currentType) {
+        return gsonBuilder.registerTypeHierarchyAdapter(Constraint.class, new JSonConstraintTypeAdapter(globTypeResolver, currentType));
+    }
+
     public static Gson create(GlobTypeResolver globTypeResolver, GlobType currentType) {
         return createBuilder(globTypeResolver, currentType).create();
     }
@@ -131,7 +135,7 @@ public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
                 Field field = readField(in);
                 JsonArray asJsonArray = in.getAsJsonArray(VALUES);
                 JsonFieldValueReaderVisitor visitor = new JsonFieldValueReaderVisitor();
-                List<Object> values = new ArrayList<>();
+                Set<Object> values = new HashSet<>();
                 for (JsonElement jsonElement : asJsonArray) {
                     values.add(field.safeVisit(visitor, jsonElement).value);
                 }
@@ -142,7 +146,7 @@ public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
                 Field field = readField(in);
                 JsonArray asJsonArray = in.getAsJsonArray(VALUES);
                 JsonFieldValueReaderVisitor visitor = new JsonFieldValueReaderVisitor();
-                List<Object> values = new ArrayList<>();
+                Set<Object> values = new HashSet<>();
                 for (JsonElement jsonElement : asJsonArray) {
                     values.add(field.safeVisit(visitor, jsonElement).value);
                 }
