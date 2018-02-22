@@ -1,5 +1,6 @@
 package org.globsframework.sqlstreams.drivers.mongodb;
 
+import com.mongodb.Block;
 import com.mongodb.async.client.FindIterable;
 import com.mongodb.async.client.MongoCollection;
 import com.mongodb.client.model.Filters;
@@ -44,12 +45,13 @@ public class MongoSelectQuery implements SelectQuery {
     static final Document END = new Document();
     static final Document END_WITH_ERROR = new Document();
     public static final Logger LOGGER = LoggerFactory.getLogger(MongoSelectQuery.class);
-    public static final int timeOutInS = 60 * 60;
+    public static final int timeOutInS = 10 * 60;
     private final MongoCollection<Document> collection;
     private final Map<Field, Accessor> fieldsAndAccessor;
     private final Ref<Document> currentDoc;
     private final GlobType globType;
-    private final String requete;
+    private final String request;
+    private String lastFullRequest;
     private SqlService sqlService;
     private Constraint constraint;
     private final List<MongoSelectBuilder.Order> orders;
@@ -62,7 +64,7 @@ public class MongoSelectQuery implements SelectQuery {
         this.fieldsAndAccessor = fieldsAndAccessor;
         this.currentDoc = currentDoc;
         this.globType = globType;
-        requete = "select on " + globType.getName();
+        request = "select on " + globType.getName();
         this.sqlService = sqlService;
         this.constraint = constraint;
         this.orders = orders;
@@ -75,7 +77,7 @@ public class MongoSelectQuery implements SelectQuery {
     }
 
     private DocumentsIterator getDocumentsIterator() {
-        ArrayBlockingQueue<Document> objects = new ArrayBlockingQueue<Document>(500, false);
+        ArrayBlockingQueue<Document> objects = new ArrayBlockingQueue<Document>(50000, false);
 
         Bson filter;
         if (constraint != null) {
@@ -86,7 +88,11 @@ public class MongoSelectQuery implements SelectQuery {
             filter = new Document();
         }
 
-        LOGGER.info("Request filter : " + requete + " where " + filter.toBsonDocument(BsonDocument.class, collection.getCodecRegistry()));
+        lastFullRequest = request + " where " + filter.toBsonDocument(BsonDocument.class, collection.getCodecRegistry());
+
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("Request filter : " + lastFullRequest);
+        }
         Bson include = include(fieldsAndAccessor.keySet()
               .stream()
               .map(sqlService::getColumnName).collect(Collectors.toList()));
@@ -106,35 +112,48 @@ public class MongoSelectQuery implements SelectQuery {
         if (top != -1) {
             findIterable.limit(top);
         }
+        Block<Document> resultCallback = new Block<Document>() {
+            boolean isClosed = false;
+
+            public void apply(Document document) {
+                if (!isClosed && document != null) {
+                    try {
+                        if (!objects.offer(document, timeOutInS, TimeUnit.SECONDS)) {
+                            isClosed = true;
+                            objects.clear();
+                            objects.offer(END_WITH_ERROR);
+                            LOGGER.error("Timeout in add element " + lastFullRequest);
+                        }
+                    } catch (InterruptedException e) {
+                        isClosed = true;
+                        objects.clear();
+                        objects.offer(END_WITH_ERROR);
+                        LOGGER.error("Interrupted in offer " + lastFullRequest, e);
+                    }
+                }
+            }
+        };
         findIterable
               .projection(include)
-              .forEach(document -> {
-                  if (document != null) {
+              .forEach(resultCallback, (aVoid, throwable) -> {
+                  if (throwable != null) {
+                      LOGGER.error("Received from async " + lastFullRequest, throwable);
+                      objects.clear();
+                      objects.offer(END_WITH_ERROR);
+                  } else
                       try {
-                          if (!objects.offer(document, timeOutInS, TimeUnit.SECONDS)) {
+                          if (!objects.offer(END, timeOutInS, TimeUnit.SECONDS)) {
+                              LOGGER.error("Timeout in end " + lastFullRequest);
                               objects.clear();
                               objects.offer(END_WITH_ERROR);
-                              LOGGER.error("Timeout in add element ");
                           }
                       } catch (InterruptedException e) {
-                          LOGGER.error("Interrupted in offer", e);
-                      }
-                  }
-              }, (aVoid, throwable) -> {
-                  if (throwable != null) {
-                      LOGGER.error("Received from async ", throwable);
-                  }
-                  try {
-                      if (!objects.offer(END, timeOutInS, TimeUnit.SECONDS)) {
-                          LOGGER.error("Timeout in end ");
                           objects.clear();
                           objects.offer(END_WITH_ERROR);
+                          LOGGER.error("Interrupted in END " + lastFullRequest, e);
                       }
-                  } catch (InterruptedException e) {
-                      LOGGER.error("Interrupted in END ", e);
-                  }
               });
-        return new DocumentsIterator(currentDoc, objects);
+        return new DocumentsIterator(currentDoc, objects, lastFullRequest);
     }
 
     public GlobStream execute() {
@@ -157,7 +176,7 @@ public class MongoSelectQuery implements SelectQuery {
             }
 
             public void close() {
-
+                iterator.close();
             }
         };
     }
@@ -169,6 +188,7 @@ public class MongoSelectQuery implements SelectQuery {
         while (globStream.next()) {
             result.addAll(accessorGlobsBuilder.getGlobs());
         }
+        globStream.close();
         return result;
     }
 
@@ -178,9 +198,9 @@ public class MongoSelectQuery implements SelectQuery {
             return globs.get(0);
         }
         if (globs.isEmpty()) {
-            throw new ItemNotFound("No result returned for: " + requete);
+            throw new ItemNotFound("No result returned for: " + lastFullRequest);
         }
-        throw new TooManyItems("Too many results for: " + requete);
+        throw new TooManyItems("Too many results for: " + lastFullRequest);
     }
 
     public void close() {
@@ -189,17 +209,21 @@ public class MongoSelectQuery implements SelectQuery {
     private static class DocumentsIterator implements Iterator<Object> {
         private Ref<Document> currentDoc;
         private final BlockingQueue<Document> documents;
+        private String lastFullRequest;
         Document current;
 
-        public DocumentsIterator(Ref<Document> currentDoc, BlockingQueue<Document> documents) {
+        public DocumentsIterator(Ref<Document> currentDoc, BlockingQueue<Document> documents, String lastFullRequest) {
             this.currentDoc = currentDoc;
             this.documents = documents;
+            this.lastFullRequest = lastFullRequest;
             current = null;
         }
 
         public boolean hasNext() {
             if (current == END_WITH_ERROR) {
-                throw new RuntimeException("Error in async call. See logs");
+                String message = "Error in async call. See logs " + lastFullRequest;
+                LOGGER.error(message);
+                throw new RuntimeException(message);
             }
             if (current == END) {
                 currentDoc.set(null);
@@ -211,10 +235,14 @@ public class MongoSelectQuery implements SelectQuery {
             try {
                 current = documents.poll(timeOutInS, TimeUnit.SECONDS);
                 if (current == END_WITH_ERROR) {
-                    throw new RuntimeException("Error in async call. See logs");
+                    String message = "Error in async call. See logs " + lastFullRequest;
+                    LOGGER.error(message);
+                    throw new RuntimeException(message);
                 }
             } catch (InterruptedException e) {
-                LOGGER.error("Interrupted while waiting for data", e);
+                String message = "Interrupted while waiting for data " + lastFullRequest;
+                LOGGER.error(message, e);
+                throw new RuntimeException(message, e);
             }
             return current != null && current != END;
         }
@@ -224,6 +252,12 @@ public class MongoSelectQuery implements SelectQuery {
             this.current = null;
             currentDoc.set(current);
             return current;
+        }
+
+        public void close() {
+            if (!documents.isEmpty()) {
+                LOGGER.warn("All data not read : " + documents.size() + " for " + lastFullRequest);
+            }
         }
     }
 
@@ -340,8 +374,7 @@ public class MongoSelectQuery implements SelectQuery {
             String fieldName = sqlService.getColumnName(constraint.getField());
             if (constraint.checkNull()) {
                 filter = Filters.not(Filters.exists(fieldName));
-            }
-            else {
+            } else {
                 filter = Filters.exists(fieldName);
             }
         }
