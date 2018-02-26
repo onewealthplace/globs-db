@@ -55,7 +55,7 @@
         </dependency>
         <dependency>
             <groupId>org.mongodb</groupId>
-            <artifactId>mongodb-driver-async</artifactId>
+            <artifactId>mongodb-driver-sync</artifactId>
             <version>3.5.0</version>
         </dependency>
 

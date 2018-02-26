@@ -1,7 +1,6 @@
 package org.globsframework.sqlstreams.drivers.mongodb;
 
-import com.mongodb.async.client.ListIndexesIterable;
-import com.mongodb.async.client.MongoCollection;
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.IndexOptions;
 import org.bson.Document;
 import org.globsframework.metamodel.Field;
@@ -22,8 +21,10 @@ import org.globsframework.utils.collections.MultiMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 public class MongoUtils {
     public static final String DB_REF_ID_EXT = "id";
@@ -36,22 +37,9 @@ public class MongoUtils {
             return;
         }
         List<Document> documents = new ArrayList<>();
-        ListIndexesIterable<Document> documentListIndexesIterable = collection.listIndexes();
-        CompletableFuture<Throwable> future = new CompletableFuture<>();
-        documentListIndexesIterable.into(documents, (result, t) -> {
-            for (Index index : indices) {
-                findOrCreateIndex(collection, index, documents);
-            }
-            future.complete(t);
-        });
-        Throwable throwable = null;
-        try {
-            throwable = future.get();
-        } catch (Exception e) {
-            LOGGER.error("timeout", e);
-        }
-        if (throwable != null) {
-            LOGGER.error("while creating index ", throwable);
+        collection.listIndexes().into(documents);
+        for (Index index : indices) {
+            findOrCreateIndex(collection, index, documents);
         }
     }
 
@@ -63,16 +51,10 @@ public class MongoUtils {
         }
         Document document = new Document();
         functionalIndex.fields().forEach(field -> document.append(getFullDbName(field), 1));
-        LOGGER.info("create index " + functionalIndex.getName()+ " =>" + document);
+        LOGGER.info("create index " + functionalIndex.getName() + " =>" + document);
         collection.createIndex(document, new IndexOptions()
               .unique(functionalIndex.visit(new IsUniqueIndexVisitor()).isUnique())
-              .name(functionalIndex.getName()), (result, t) -> {
-            if (t != null) {
-                LOGGER.error("Fail to create index " + functionalIndex.getName(), t);
-            } else if (result != null) {
-                LOGGER.info("Index " + functionalIndex.getName() + " created : '" + result + "'");
-            }
-        });
+              .name(functionalIndex.getName()));
     }
 
     protected static boolean contain(Index functionalIndex, Document document) {
@@ -110,7 +92,7 @@ public class MongoUtils {
     }
 
     public static void fill(List<Glob> data, SqlService sqlService) {
-        MultiMap<GlobType, Glob>  dataByType = new MultiMap<>();
+        MultiMap<GlobType, Glob> dataByType = new MultiMap<>();
         data.forEach(glob -> dataByType.put(glob.getType(), glob));
         for (Map.Entry<GlobType, List<Glob>> globTypeListEntry : dataByType.entries()) {
             Ref<Glob> ref = new Ref<>();
@@ -156,7 +138,7 @@ public class MongoUtils {
     }
 
 
-    static class DoubleGlobAccessor implements DoubleAccessor{
+    static class DoubleGlobAccessor implements DoubleAccessor {
         private final DoubleField field;
         private final Ref<Glob> glob;
 
@@ -207,6 +189,7 @@ public class MongoUtils {
             return getInteger();
         }
     }
+
     static class LongGlobAccessor implements LongAccessor {
         private final LongField field;
         private final Ref<Glob> glob;

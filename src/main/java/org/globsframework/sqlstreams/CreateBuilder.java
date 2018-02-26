@@ -34,4 +34,7 @@ public interface CreateBuilder {
     CreateBuilder setObject(Field field, Object value);
 
     SqlRequest getRequest();
+
+    BulkDbRequest getBulkRequest();
+
 }
