@@ -3,6 +3,7 @@ package org.globsframework.sqlstreams.utils;
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
 import org.globsframework.metamodel.fields.*;
+import org.globsframework.sqlstreams.BulkDbRequest;
 import org.globsframework.sqlstreams.CreateBuilder;
 import org.globsframework.sqlstreams.SqlConnection;
 import org.globsframework.sqlstreams.SqlRequest;
@@ -98,11 +99,15 @@ public class MultiCreateBuilder implements CreateBuilder {
         return new MultiSqlRequest(createBuilders);
     }
 
+    public BulkDbRequest getBulkRequest() {
+        return new MultiBulkDbRequest(createBuilders);
+    }
+
     static private class MultiSqlRequest implements SqlRequest {
         private Collection<SqlRequest> sqlRequests;
 
         public MultiSqlRequest(Map<GlobType, CreateBuilder> createBuilders) {
-            sqlRequests = new ArrayList<SqlRequest>(createBuilders.size());
+            sqlRequests = new ArrayList<>(createBuilders.size());
             for (CreateBuilder builder : createBuilders.values()) {
                 sqlRequests.add(builder.getRequest());
             }
@@ -117,6 +122,35 @@ public class MultiCreateBuilder implements CreateBuilder {
         public void close() {
             for (SqlRequest request : sqlRequests) {
                 request.close();
+            }
+        }
+    }
+
+    static private class MultiBulkDbRequest implements BulkDbRequest {
+        private Collection<BulkDbRequest> sqlRequests;
+
+        public MultiBulkDbRequest(Map<GlobType, CreateBuilder> createBuilders) {
+            sqlRequests = new ArrayList<BulkDbRequest>(createBuilders.size());
+            for (CreateBuilder builder : createBuilders.values()) {
+                sqlRequests.add(builder.getBulkRequest());
+            }
+        }
+
+        public void run() throws SqlException {
+            for (SqlRequest sqlRequest : sqlRequests) {
+                sqlRequest.run();
+            }
+        }
+
+        public void close() {
+            for (SqlRequest request : sqlRequests) {
+                request.close();
+            }
+        }
+
+        public void flush() {
+            for (BulkDbRequest request : sqlRequests) {
+                request.flush();
             }
         }
     }

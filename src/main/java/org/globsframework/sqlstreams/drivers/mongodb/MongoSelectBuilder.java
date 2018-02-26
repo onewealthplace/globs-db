@@ -1,7 +1,7 @@
 package org.globsframework.sqlstreams.drivers.mongodb;
 
-import com.mongodb.async.client.MongoCollection;
-import com.mongodb.async.client.MongoDatabase;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
@@ -52,17 +52,6 @@ public class MongoSelectBuilder implements SelectBuilder {
         this.globType = globType;
         this.sqlService = sqlService;
         this.constraint = constraint;
-//        if (LOGGER.isDebugEnabled()) {
-        CompletableFuture completableFuture = new CompletableFuture();
-        mongoDatabase.listCollections().forEach(document -> LOGGER.debug(document.toJson()), (result, t) -> {
-            completableFuture.complete(null);
-        });
-        try {
-            completableFuture.get();
-        } catch (Exception e) {
-            throw new RuntimeException("Fail to connect to db ");
-        }
-//        }
         collection = mongoDatabase.getCollection(sqlService.getTableName(globType), Document.class);
     }
 

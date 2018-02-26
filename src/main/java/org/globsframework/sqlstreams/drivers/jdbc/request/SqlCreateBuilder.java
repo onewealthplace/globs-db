@@ -3,6 +3,7 @@ package org.globsframework.sqlstreams.drivers.jdbc.request;
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
 import org.globsframework.metamodel.fields.*;
+import org.globsframework.sqlstreams.BulkDbRequest;
 import org.globsframework.sqlstreams.CreateBuilder;
 import org.globsframework.sqlstreams.SqlRequest;
 import org.globsframework.sqlstreams.SqlService;
@@ -10,6 +11,7 @@ import org.globsframework.sqlstreams.accessors.LongGeneratedKeyAccessor;
 import org.globsframework.sqlstreams.drivers.jdbc.BlobUpdater;
 import org.globsframework.sqlstreams.drivers.jdbc.JdbcConnection;
 import org.globsframework.sqlstreams.drivers.jdbc.SqlCreateRequest;
+import org.globsframework.sqlstreams.exceptions.SqlException;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.streams.accessors.utils.*;
 import org.globsframework.utils.collections.Pair;
@@ -128,5 +130,21 @@ public class SqlCreateBuilder implements CreateBuilder {
 
     public SqlRequest getRequest() {
         return new SqlCreateRequest(fields, longGeneratedKeyAccessor, connection, globType, sqlService, blobUpdater, jdbcConnection);
+    }
+
+    public BulkDbRequest getBulkRequest() {
+        SqlRequest request = getRequest();
+        return new BulkDbRequest() {
+            public void flush() {
+            }
+
+            public void run() throws SqlException {
+                request.run();
+            }
+
+            public void close() {
+                request.close();
+            }
+        };
     }
 }

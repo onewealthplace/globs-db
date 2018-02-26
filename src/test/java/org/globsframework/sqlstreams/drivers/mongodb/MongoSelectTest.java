@@ -1,47 +1,45 @@
 package org.globsframework.sqlstreams.drivers.mongodb;
 
 import com.github.fakemongo.junit.FongoAsyncRule;
+import com.github.fakemongo.junit.FongoRule;
+import com.mongodb.Block;
 import com.mongodb.async.client.MongoCollection;
-import com.mongodb.async.client.MongoDatabase;
+import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
-import org.bson.codecs.Codec;
-import org.bson.codecs.configuration.CodecProvider;
-import org.bson.codecs.configuration.CodecRegistries;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.globsframework.metamodel.GlobType;
 import org.globsframework.metamodel.GlobTypeLoader;
 import org.globsframework.metamodel.GlobTypeLoaderFactory;
 import org.globsframework.metamodel.annotations.KeyField;
-import org.globsframework.metamodel.fields.*;
+import org.globsframework.metamodel.fields.DoubleField;
+import org.globsframework.metamodel.fields.IntegerField;
+import org.globsframework.metamodel.fields.StringField;
 import org.globsframework.metamodel.index.MultiFieldUniqueIndex;
-import org.globsframework.model.Glob;
 import org.globsframework.model.GlobList;
 import org.globsframework.model.KeyBuilder;
-import org.globsframework.model.MutableGlob;
-import org.globsframework.model.impl.DefaultGlob;
 import org.globsframework.model.repository.DefaultGlobRepository;
 import org.globsframework.sqlstreams.SqlConnection;
 import org.globsframework.sqlstreams.constraints.Constraints;
+import org.globsframework.utils.Ref;
 import org.globsframework.utils.Utils;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 import static org.globsframework.sqlstreams.drivers.mongodb.MongoSelectTest.DummyObject.*;
 
 public class MongoSelectTest {
     @Rule
+    public FongoRule fongoRule = new FongoRule();
+    @Rule
     public FongoAsyncRule fongoAsyncRule = new FongoAsyncRule();
 
     @Test
-    public void Select() throws Exception {
+    public void Select() {
         InitDb initDb = new InitDb().invoke();
         MongoDatabase database = initDb.getDatabase();
         MongoDbService sqlService = initDb.getSqlService();
@@ -61,7 +59,7 @@ public class MongoSelectTest {
     }
 
     @Test
-    public void IsNullIsExist() throws ExecutionException, InterruptedException {
+    public void IsNullIsExist() {
         InitDb initDb = new InitDb().invoke();
         MongoDatabase database = initDb.getDatabase();
         MongoDbService sqlService = initDb.getSqlService();
@@ -82,7 +80,7 @@ public class MongoSelectTest {
 
 
     @Test
-    public void contains() throws ExecutionException, InterruptedException {
+    public void contains() {
         InitDb initDb = new InitDb().invoke();
         MongoDatabase database = initDb.getDatabase();
         MongoDbService sqlService = initDb.getSqlService();
@@ -102,7 +100,7 @@ public class MongoSelectTest {
     }
 
     @Test
-    public void notIn() throws ExecutionException, InterruptedException {
+    public void notIn() {
         InitDb initDb = new InitDb().invoke();
         MongoDatabase database = initDb.getDatabase();
         MongoDbService sqlService = initDb.getSqlService();
@@ -119,7 +117,7 @@ public class MongoSelectTest {
     }
 
     @Test
-    public void orderAndLimit() throws ExecutionException, InterruptedException {
+    public void orderAndLimit() {
         InitDb initDb = new InitDb().invoke();
         MongoDatabase database = initDb.getDatabase();
         MongoDbService sqlService = initDb.getSqlService();
@@ -137,7 +135,7 @@ public class MongoSelectTest {
     }
 
     @Test
-    public void testInOp() throws ExecutionException, InterruptedException {
+    public void testInOp() {
         InitDb initDb = new InitDb().invoke();
         MongoDatabase database = initDb.getDatabase();
         MongoDbService sqlService = initDb.getSqlService();
@@ -153,33 +151,16 @@ public class MongoSelectTest {
         Assert.assertEquals(3, sortedFirstGlob.get(1).get(ID).intValue());
     }
 
-    private void insert(MongoCollection<Glob> globMongoCollection, MutableGlob data, MongoDbService sqlService) throws InterruptedException, java.util.concurrent.ExecutionException {
-        CompletableFuture waitOn = new CompletableFuture();
-
-        globMongoCollection.insertOne(data, (aVoid, throwable) -> {
-            if (throwable != null) {
-                throwable.printStackTrace();
-            }
-            waitOn.complete(null);
-        });
-        waitOn.get();
-    }
-
     @Test
-    public void checkIndexCreation() throws Exception {
-        MongoDatabase database = fongoAsyncRule.getDatabase();
-        MongoCollection<Document> globMongoCollection = database.getCollection(DummyObject.TYPE.getName(), Document.class);
+    public void checkIndexCreation() {
+        MongoDatabase database = fongoRule.getDatabase();
+        com.mongodb.client.MongoCollection<Document> globMongoCollection = database.getCollection(DummyObject.TYPE.getName(), Document.class);
         MongoUtils.createIndexIfNeeded(globMongoCollection, Collections.singleton(NAME_INDEX));
-        CompletableFuture<Boolean> future = new CompletableFuture<>();
-        List<Document> index = new ArrayList<>();
-        globMongoCollection.listIndexes().into(index, (documents, throwable) -> {
-            for (Document document : documents) {
-                if (MongoUtils.contain(NAME_INDEX, document)){
-                    future.complete(true);
-                    return;
-                }
+        Ref<Boolean> future = new Ref<>();
+        globMongoCollection.listIndexes().forEach((Block<? super Document>) document -> {
+                if (MongoUtils.contain(NAME_INDEX, document)) {
+                    future.set(Boolean.TRUE);
             }
-            future.complete(false);
         });
         Assert.assertTrue(future.get());
     }
@@ -207,10 +188,10 @@ public class MongoSelectTest {
 
 
     private class InitDb {
-        private MongoDatabase database;
+        private com.mongodb.client.MongoDatabase database;
         private MongoDbService sqlService;
 
-        public MongoDatabase getDatabase() {
+        public com.mongodb.client.MongoDatabase getDatabase() {
             return database;
         }
 
@@ -218,38 +199,27 @@ public class MongoSelectTest {
             return sqlService;
         }
 
-        public InitDb invoke() throws InterruptedException, java.util.concurrent.ExecutionException {
-            database = fongoAsyncRule.getDatabase();
+        public InitDb invoke() {
+            database = fongoRule.getDatabase();
             sqlService = new MongoDbService(database);
-
-            MongoCollection<Glob> globMongoCollection = database
-                  .getCollection(sqlService.getTableName(DummyObject.TYPE), Glob.class)
-                  .withCodecRegistry(CodecRegistries.fromProviders(new CodecProvider() {
-                      public <T> Codec<T> get(Class<T> aClass, CodecRegistry codecRegistry) {
-                          if (aClass == DefaultGlob.class || aClass == Glob.class) {
-                              return (Codec<T>) new GlobCodec(DummyObject.TYPE, sqlService);
-                          }
-                          return null;
-                      }
-                  }));
-
-            insert(globMongoCollection, DummyObject.TYPE.instantiate()
-                  .set(DummyObject.ID, 1)
-                  .set(DummyObject.NAME, "name 1")
-                  .set(DummyObject.NAME_2, "second name")
-                  .set(VALUE, 3.14), sqlService);
-            insert(globMongoCollection, DummyObject.TYPE.instantiate()
-                  .set(DummyObject.ID, 2)
-                  .set(DummyObject.NAME, "name 2")
-                  .set(VALUE, 3.14 * 2.), sqlService);
-            insert(globMongoCollection, DummyObject.TYPE.instantiate()
-                  .set(DummyObject.ID, 3)
-                  .set(DummyObject.NAME, "name 3")
-                  .set(VALUE, 3.14 * 3.), sqlService);
-            insert(globMongoCollection, DummyObject.TYPE.instantiate()
-                  .set(DummyObject.ID, 4)
-                  .set(DummyObject.NAME, "my name")
-                  .set(VALUE, 3.14 * 3.), sqlService);
+            sqlService.getDb().populate(new GlobList(
+                  DummyObject.TYPE.instantiate()
+                        .set(DummyObject.ID, 1)
+                        .set(DummyObject.NAME, "name 1")
+                        .set(DummyObject.NAME_2, "second name")
+                        .set(VALUE, 3.14),
+                  DummyObject.TYPE.instantiate()
+                        .set(DummyObject.ID, 2)
+                        .set(DummyObject.NAME, "name 2")
+                        .set(VALUE, 3.14 * 2.),
+                  DummyObject.TYPE.instantiate()
+                        .set(DummyObject.ID, 3)
+                        .set(DummyObject.NAME, "name 3")
+                        .set(VALUE, 3.14 * 3.),
+                  DummyObject.TYPE.instantiate()
+                        .set(DummyObject.ID, 4)
+                        .set(DummyObject.NAME, "my name")
+                        .set(VALUE, 3.14 * 3.)));
             return this;
         }
     }
