@@ -1,8 +1,8 @@
 package org.globsframework.sqlstreams.drivers.mongodb;
 
-import com.mongodb.Block;
-import com.mongodb.async.client.FindIterable;
-import com.mongodb.async.client.MongoCollection;
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Sorts;
 import org.bson.BsonDocument;
@@ -30,9 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -42,10 +39,7 @@ import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Projections.include;
 
 public class MongoSelectQuery implements SelectQuery {
-    static final Document END = new Document();
-    static final Document END_WITH_ERROR = new Document();
     public static final Logger LOGGER = LoggerFactory.getLogger(MongoSelectQuery.class);
-    public static final int timeOutInS = 10 * 60;
     private final MongoCollection<Document> collection;
     private final Map<Field, Accessor> fieldsAndAccessor;
     private final Ref<Document> currentDoc;
@@ -77,8 +71,6 @@ public class MongoSelectQuery implements SelectQuery {
     }
 
     private DocumentsIterator getDocumentsIterator() {
-        ArrayBlockingQueue<Document> objects = new ArrayBlockingQueue<Document>(50000, false);
-
         Bson filter;
         if (constraint != null) {
             MongoConstraintVisitor constraintVisitor = new MongoConstraintVisitor(sqlService);
@@ -112,48 +104,10 @@ public class MongoSelectQuery implements SelectQuery {
         if (top != -1) {
             findIterable.limit(top);
         }
-        Block<Document> resultCallback = new Block<Document>() {
-            boolean isClosed = false;
-
-            public void apply(Document document) {
-                if (!isClosed && document != null) {
-                    try {
-                        if (!objects.offer(document, timeOutInS, TimeUnit.SECONDS)) {
-                            isClosed = true;
-                            objects.clear();
-                            objects.offer(END_WITH_ERROR);
-                            LOGGER.error("Timeout in add element " + lastFullRequest);
-                        }
-                    } catch (InterruptedException e) {
-                        isClosed = true;
-                        objects.clear();
-                        objects.offer(END_WITH_ERROR);
-                        LOGGER.error("Interrupted in offer " + lastFullRequest, e);
-                    }
-                }
-            }
-        };
-        findIterable
+        MongoCursor<Document> iterator = findIterable
               .projection(include)
-              .forEach(resultCallback, (aVoid, throwable) -> {
-                  if (throwable != null) {
-                      LOGGER.error("Received from async " + lastFullRequest, throwable);
-                      objects.clear();
-                      objects.offer(END_WITH_ERROR);
-                  } else
-                      try {
-                          if (!objects.offer(END, timeOutInS, TimeUnit.SECONDS)) {
-                              LOGGER.error("Timeout in end " + lastFullRequest);
-                              objects.clear();
-                              objects.offer(END_WITH_ERROR);
-                          }
-                      } catch (InterruptedException e) {
-                          objects.clear();
-                          objects.offer(END_WITH_ERROR);
-                          LOGGER.error("Interrupted in END " + lastFullRequest, e);
-                      }
-              });
-        return new DocumentsIterator(currentDoc, objects, lastFullRequest);
+              .iterator();
+        return new DocumentsIterator(currentDoc, iterator, lastFullRequest);
     }
 
     public GlobStream execute() {
@@ -208,55 +162,28 @@ public class MongoSelectQuery implements SelectQuery {
 
     private static class DocumentsIterator implements Iterator<Object> {
         private Ref<Document> currentDoc;
-        private final BlockingQueue<Document> documents;
+        private MongoCursor<Document> iterator;
         private String lastFullRequest;
-        Document current;
 
-        public DocumentsIterator(Ref<Document> currentDoc, BlockingQueue<Document> documents, String lastFullRequest) {
+        public DocumentsIterator(Ref<Document> currentDoc, MongoCursor<Document> iterator, String lastFullRequest) {
             this.currentDoc = currentDoc;
-            this.documents = documents;
+            this.iterator = iterator;
             this.lastFullRequest = lastFullRequest;
-            current = null;
         }
 
         public boolean hasNext() {
-            if (current == END_WITH_ERROR) {
-                String message = "Error in async call. See logs " + lastFullRequest;
-                LOGGER.error(message);
-                throw new RuntimeException(message);
-            }
-            if (current == END) {
-                currentDoc.set(null);
-                return false;
-            }
-            if (current != null) {
-                return true;
-            }
-            try {
-                current = documents.poll(timeOutInS, TimeUnit.SECONDS);
-                if (current == END_WITH_ERROR) {
-                    String message = "Error in async call. See logs " + lastFullRequest;
-                    LOGGER.error(message);
-                    throw new RuntimeException(message);
-                }
-            } catch (InterruptedException e) {
-                String message = "Interrupted while waiting for data " + lastFullRequest;
-                LOGGER.error(message, e);
-                throw new RuntimeException(message, e);
-            }
-            return current != null && current != END;
+            return iterator.hasNext();
         }
 
         public Object next() {
-            Document current = this.current;
-            this.current = null;
-            currentDoc.set(current);
-            return current;
+            Document next = iterator.next();
+            currentDoc.set(next);
+            return next;
         }
 
         public void close() {
-            if (!documents.isEmpty()) {
-                LOGGER.warn("All data not read : " + documents.size() + " for " + lastFullRequest);
+            if (iterator.hasNext()) {
+                LOGGER.warn("All data not read : for " + lastFullRequest);
             }
         }
     }

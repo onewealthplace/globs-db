@@ -1,7 +1,7 @@
 package org.globsframework.sqlstreams.drivers.mongodb;
 
-import com.mongodb.async.client.MongoCollection;
-import com.mongodb.async.client.MongoDatabase;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.globsframework.metamodel.Field;
@@ -18,9 +18,12 @@ import org.globsframework.streams.accessors.*;
 import org.globsframework.streams.accessors.utils.*;
 
 import java.sql.Connection;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public class MongoDbConnection implements SqlConnection {
     MongoDatabase mongoDatabase;
@@ -88,10 +91,10 @@ public class MongoDbConnection implements SqlConnection {
     private static class MongoCreateBuilder implements CreateBuilder {
         private final MongoDatabase mongoDatabase;
         private final GlobType globType;
-        private final SqlService sqlService;
+        private final MongoDbService sqlService;
         Map<Field, Accessor> fieldsValues = new HashMap<>();
 
-        public MongoCreateBuilder(MongoDatabase mongoDatabase, GlobType globType, SqlService sqlService) {
+        public MongoCreateBuilder(MongoDatabase mongoDatabase, GlobType globType, MongoDbService sqlService) {
             this.mongoDatabase = mongoDatabase;
             this.globType = globType;
             this.sqlService = sqlService;
@@ -192,17 +195,28 @@ public class MongoDbConnection implements SqlConnection {
         }
 
         public SqlRequest getRequest() {
-            return new MongoCreateSqlRequest(mongoDatabase.getCollection(sqlService.getTableName(globType)), fieldsValues);
+            return new MongoCreateSqlRequest(mongoDatabase.getCollection(sqlService.getTableName(globType)), fieldsValues, sqlService, false);
         }
 
-        private static class MongoCreateSqlRequest implements SqlRequest {
+        public BulkDbRequest getBulkRequest() {
+            return new MongoCreateSqlRequest(mongoDatabase.getCollection(sqlService.getTableName(globType)), fieldsValues, sqlService, true);
+        }
+
+        private static class MongoCreateSqlRequest implements BulkDbRequest {
             private MongoCollection<Document> collection;
             private Map<Field, Accessor> fieldsValues;
-            private AtomicInteger count = new AtomicInteger();
+            private MongoDbService sqlService;
+            private boolean bulk;
+            private List<Document> docs;
+            CompletableFuture<Boolean> completableFuture;
+            private int count = 0;
 
-            public MongoCreateSqlRequest(MongoCollection<Document> collection, Map<Field, Accessor> fieldsValues) {
+            public MongoCreateSqlRequest(MongoCollection<Document> collection,
+                                         Map<Field, Accessor> fieldsValues, MongoDbService sqlService, boolean bulk) {
                 this.collection = collection;
                 this.fieldsValues = fieldsValues;
+                this.sqlService = sqlService;
+                this.bulk = bulk;
             }
 
             public void run() throws SqlException {
@@ -220,18 +234,66 @@ public class MongoDbConnection implements SqlConnection {
                     }
                 }
 
-                collection.insertOne(doc, (result, t) -> {
-                    count.decrementAndGet();
-                    synchronized (MongoCreateSqlRequest.this) {
-                        MongoCreateSqlRequest.this.notify();
+                if (++count <= 2 || bulk) {
+                    collection.insertOne(doc);
+                } else {
+                    if (docs == null) {
+                        docs = new ArrayList<>(100);
                     }
-                });
-                //increment after to be sure that no execption was thrown in insertOne
-                count.incrementAndGet();
+                    docs.add(doc);
+                    if (docs.size() == 100) {
+                        if (completableFuture != null) {
+                            if (completableFuture.isCompletedExceptionally()) {
+                                try {
+                                    completableFuture.get();
+                                } catch (Exception e) {
+                                    throw new RuntimeException("Create failed ", e);
+                                }
+                            }
+                            final List<Document> toInsert = docs;
+                            docs = null;
+                            completableFuture = completableFuture.
+                                  thenApply(ok -> {
+                                      collection.insertMany(toInsert);
+                                      return true;
+                                  });
+                        } else {
+                            final List<Document> toInsert = docs;
+                            docs = null;
+                            completableFuture = CompletableFuture.supplyAsync(() -> {
+                                collection.insertMany(toInsert);
+                                return Boolean.TRUE;
+                            }, sqlService.getExecutor());
+                        }
+                    }
+                }
             }
 
             public void close() {
-                waitComplete(this, () -> count.get() == 0, 10000);
+                if (completableFuture != null) {
+                    if (docs != null && !docs.isEmpty()) {
+                        completableFuture = completableFuture.thenApply(ok -> {
+                            collection.insertMany(docs);
+                            return true;
+                        });
+                    }
+                    try {
+                        completableFuture.get(1, TimeUnit.MINUTES);
+                        completableFuture = null;
+                    } catch (Exception e) {
+                        completableFuture = null;
+                        throw new RuntimeException("In close, fail to insert all data", e);
+                    }
+                }
+                else {
+                    if (docs != null && !docs.isEmpty()) {
+                        collection.insertMany(docs);
+                    }
+                }
+            }
+
+            public void flush() {
+                close();
             }
         }
     }
