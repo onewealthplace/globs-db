@@ -28,7 +28,7 @@ public class CassandraSelectQuery implements SelectQuery {
     private Constraint constraint;
     private boolean autoClose;
     private Map<Field, CasAccessor> fieldToAccessorHolder;
-    private SqlService sqlService;
+    private DbCasandra sqlService;
     private final List<Order> orders;
     private final int top;
     private Set<Field> distinct;
@@ -47,7 +47,7 @@ public class CassandraSelectQuery implements SelectQuery {
     }
 
     public CassandraSelectQuery(Session session, Constraint constraint,
-                                Map<Field, CasAccessor> fieldToAccessorHolder, SqlService sqlService,
+                                Map<Field, CasAccessor> fieldToAccessorHolder, DbCasandra sqlService,
                                 boolean autoClose, List<Order> orders, int top, Set<Field> distinct) {
         this.constraint = constraint;
         this.autoClose = autoClose;
@@ -68,15 +68,13 @@ public class CassandraSelectQuery implements SelectQuery {
         for (Iterator<Map.Entry<Field, CasAccessor>> iterator = fieldToAccessorHolder.entrySet().iterator();
              iterator.hasNext(); ) {
             Map.Entry<Field, CasAccessor> fieldAndAccessor = iterator.next();
-            fieldAndAccessor.getValue().setIndex(++index);
+            fieldAndAccessor.getValue().setIndex(index++);
             GlobType globType = fieldAndAccessor.getKey().getGlobType();
             globTypes.add(globType);
-            String tableName = sqlService.getTableName(globType);
             if (distinct.contains(fieldAndAccessor.getKey())) {
                 prettyWriter.append(" DISTINCT ");
             }
-            prettyWriter.append(tableName)
-                  .append(".")
+            prettyWriter
                   .append(sqlService.getColumnName(fieldAndAccessor.getKey()))
                   .appendIf(", ", iterator.hasNext());
         }
@@ -90,7 +88,10 @@ public class CassandraSelectQuery implements SelectQuery {
         prettyWriter.append(" from ");
         for (Iterator it = globTypes.iterator(); it.hasNext(); ) {
             GlobType globType = (GlobType) it.next();
-            prettyWriter.append(sqlService.getTableName(globType))
+            prettyWriter
+                  .append(sqlService.getKeySpace())
+                  .append(".")
+                  .append(sqlService.getTableName(globType))
                   .appendIf(", ", it.hasNext());
         }
         if (where != null) {
@@ -111,6 +112,8 @@ public class CassandraSelectQuery implements SelectQuery {
             prettyWriter.removeLast().removeLast();
         }
         prettyWriter.append(" LIMIT " + (top == -1 ? Integer.MAX_VALUE : top));
+        prettyWriter.append(" ALLOW FILTERING ");
+        prettyWriter.append(";");
         return prettyWriter.toString();
     }
 
