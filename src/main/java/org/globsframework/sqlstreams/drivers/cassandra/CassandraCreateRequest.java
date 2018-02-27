@@ -9,7 +9,7 @@ import org.globsframework.metamodel.fields.*;
 import org.globsframework.sqlstreams.SqlRequest;
 import org.globsframework.sqlstreams.SqlService;
 import org.globsframework.sqlstreams.accessors.GeneratedKeyAccessor;
-import org.globsframework.sqlstreams.drivers.cassandra.impl.SqlValueFieldVisitor;
+import org.globsframework.sqlstreams.drivers.cassandra.impl.CassandraValueFieldVisitor;
 import org.globsframework.sqlstreams.utils.PrettyWriter;
 import org.globsframework.sqlstreams.utils.StringPrettyWriter;
 import org.globsframework.streams.accessors.Accessor;
@@ -24,11 +24,11 @@ public class CassandraCreateRequest implements SqlRequest {
     private List<Pair<Field, Accessor>> fields;
     private GeneratedKeyAccessor generatedKeyAccessor;
     private GlobType globType;
-    private SqlService sqlService;
+    private DbCasandra sqlService;
 
     public CassandraCreateRequest(List<Pair<Field, Accessor>> fields, GeneratedKeyAccessor generatedKeyAccessor,
                                   Session session,
-                                  GlobType globType, SqlService sqlService) {
+                                  GlobType globType, DbCasandra sqlService) {
         this.generatedKeyAccessor = generatedKeyAccessor;
         this.fields = fields;
         this.globType = globType;
@@ -49,6 +49,8 @@ public class CassandraCreateRequest implements SqlRequest {
     private String prepareRequest(List<Pair<Field, Accessor>> fields, GlobType globType, Value value) {
         PrettyWriter writer = new StringPrettyWriter();
         writer.append("INSERT INTO ")
+              .append(sqlService.getKeySpace())
+              .append(".")
               .append(sqlService.getTableName(globType))
               .append(" (");
         int columnCount = 0;
@@ -70,10 +72,10 @@ public class CassandraCreateRequest implements SqlRequest {
     public void run() {
         int index = 0;
         BoundStatement boundStatement = preparedStatement.bind();
-        SqlValueFieldVisitor sqlValueVisitor = new SqlValueFieldVisitor(boundStatement);
+        CassandraValueFieldVisitor sqlValueVisitor = new CassandraValueFieldVisitor(boundStatement);
         for (Pair<Field, Accessor> pair : fields) {
             Object value = pair.getSecond().getObjectValue();
-            sqlValueVisitor.setValue(value, ++index);
+            sqlValueVisitor.setValue(value, index++);
             pair.getFirst().safeVisit(sqlValueVisitor);
         }
         session.execute(boundStatement);

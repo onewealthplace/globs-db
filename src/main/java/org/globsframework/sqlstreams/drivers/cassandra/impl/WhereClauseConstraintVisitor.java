@@ -102,8 +102,7 @@ public class WhereClauseConstraintVisitor implements ConstraintVisitor, OperandV
 
     public void visitFieldOperand(Field field) {
         globTypes.add(field.getGlobType());
-        prettyWriter.append(sqlService.getTableName(field.getGlobType()))
-              .append(".")
+        prettyWriter
               .append(sqlService.getColumnName(field));
     }
 

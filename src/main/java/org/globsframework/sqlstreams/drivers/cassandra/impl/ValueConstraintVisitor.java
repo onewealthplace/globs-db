@@ -1,20 +1,23 @@
 package org.globsframework.sqlstreams.drivers.cassandra.impl;
 
 import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.PreparedStatement;
 import org.globsframework.metamodel.Field;
 import org.globsframework.sqlstreams.constraints.ConstraintVisitor;
 import org.globsframework.sqlstreams.constraints.OperandVisitor;
 import org.globsframework.sqlstreams.constraints.impl.*;
 import org.globsframework.utils.exceptions.UnexpectedApplicationState;
 
-public class ValueConstraintVisitor extends SqlValueFieldVisitor implements ConstraintVisitor, OperandVisitor {
+public class ValueConstraintVisitor extends CassandraValueFieldVisitor implements ConstraintVisitor, OperandVisitor {
     private int index = 0;
 
     public ValueConstraintVisitor(BoundStatement bind) {
         super(bind);
     }
 
+    public ValueConstraintVisitor(BoundStatement bind, int index) {
+        super(bind);
+        this.index = index;
+    }
 
     public void visitEqual(EqualConstraint constraint) {
         visitBinary(constraint);
@@ -62,7 +65,7 @@ public class ValueConstraintVisitor extends SqlValueFieldVisitor implements Cons
     public void visitIn(InConstraint inConstraint) {
         Field field = inConstraint.getField();
         for (Object value : inConstraint.getValues()) {
-            setValue(value, ++index);
+            setValue(value, index++);
             field.safeVisit(this);
         }
     }
@@ -83,12 +86,12 @@ public class ValueConstraintVisitor extends SqlValueFieldVisitor implements Cons
         if (o == null) {
             throw new UnexpectedApplicationState("null not supported, Should be explicit (is null) ");
         }
-        setValue(o, ++index);
+        setValue(o, index++);
         value.getField().safeVisit(this);
     }
 
     public void visitAccessorOperand(AccessorOperand accessorOperand) {
-        setValue(accessorOperand.getAccessor().getObjectValue(), ++index);
+        setValue(accessorOperand.getAccessor().getObjectValue(), index++);
         accessorOperand.getField().safeVisit(this);
     }
 

@@ -6,12 +6,12 @@ import org.globsframework.metamodel.fields.*;
 import java.nio.ByteBuffer;
 
 
-public class SqlValueFieldVisitor implements FieldVisitor {
+public class CassandraValueFieldVisitor implements FieldVisitor {
     private final BoundStatement boundStatement;
     private Object value;
     private int index;
 
-    public SqlValueFieldVisitor(BoundStatement boundStatement) {
+    public CassandraValueFieldVisitor(BoundStatement boundStatement) {
         this.boundStatement = boundStatement;
     }
 
