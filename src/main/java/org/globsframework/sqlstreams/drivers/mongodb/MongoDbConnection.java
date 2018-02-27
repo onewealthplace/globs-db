@@ -17,6 +17,7 @@ import org.globsframework.sqlstreams.exceptions.SqlException;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.streams.accessors.utils.*;
 
+import java.util.ArrayList;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -67,10 +68,6 @@ public class MongoDbConnection implements SqlConnection {
 
     public void rollbackAndClose() {
 
-    }
-
-    public Connection getConnection() {
-        throw new RuntimeException("Not Implemented");
     }
 
     public void createTable(GlobType... globType) {
