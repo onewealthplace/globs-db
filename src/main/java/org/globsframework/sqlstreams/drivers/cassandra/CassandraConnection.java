@@ -1,30 +1,38 @@
 package org.globsframework.sqlstreams.drivers.cassandra;
 
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
+import org.globsframework.directory.Directory;
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
 import org.globsframework.metamodel.fields.*;
 import org.globsframework.model.GlobList;
 import org.globsframework.sqlstreams.*;
+import org.globsframework.sqlstreams.accessors.*;
 import org.globsframework.sqlstreams.constraints.Constraint;
+import org.globsframework.sqlstreams.drivers.cassandra.impl.FieldToCassandraAccessorVisitor;
 import org.globsframework.sqlstreams.exceptions.DbConstraintViolation;
 import org.globsframework.sqlstreams.exceptions.RollbackFailed;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.Ref;
 
 import java.sql.Connection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class CassandraConnection implements SqlConnection {
+    private Session session;
+    private SqlService sqlService;
+
+    public CassandraConnection(Session session, SqlService sqlService) {
+        this.session = session;
+        this.sqlService = sqlService;
+    }
 
     public SelectBuilder getQueryBuilder(GlobType globType) {
-        return new CassandraSelectBuilder(globType, null);
+        return new CassandraSelectBuilder(session, sqlService, globType, null);
     }
 
     public SelectBuilder getQueryBuilder(GlobType globType, Constraint constraint) {
-        return new CassandraSelectBuilder(globType, constraint);
+        return new CassandraSelectBuilder(session, sqlService, globType, constraint);
     }
 
     public CreateBuilder getCreateBuilder(GlobType globType) {
@@ -55,10 +63,6 @@ public class CassandraConnection implements SqlConnection {
 
     }
 
-    public Connection getConnection() {
-        return null;
-    }
-
     public void createTable(GlobType... globType) {
 
     }
@@ -75,180 +79,175 @@ public class CassandraConnection implements SqlConnection {
 
     }
 
-    static class SelectData {
-        Field field;
-        CasAccessor casAccessor;
-    }
-
-    interface CasAccessor {
-    }
-
-    static class IntegerCasAccessor implements CasAccessor, IntegerAccessor {
-        private final int index;
-        private Row row;
-        private boolean isNull;
-
-        IntegerCasAccessor(int index) {
-            this.index = index;
-        }
-
-        public Integer getInteger() {
-            return row.isNull(index)? null : row.getInt(index);
-        }
-
-        public int getValue(int valueIfNull) {
-            return row.isNull(index)? valueIfNull : row.getInt(index);
-        }
-
-        public boolean wasNull() {
-            return row.isNull(index);
-        }
-
-        public Object getObjectValue() {
-            return getInteger();
-        }
-    }
-
-    static class DoubleCasAccessor implements CasAccessor, DoubleAccessor {
-        private final int index;
-        private Row row;
-        private boolean isNull;
-
-        DoubleCasAccessor(int index) {
-            this.index = index;
-        }
-
-        public Double getDouble() {
-            return row.isNull(index)? null : row.getDouble(index);
-        }
-
-        public double getValue(double valueIfNull) {
-            return row.isNull(index)? valueIfNull : row.getDouble(index);
-        }
-
-        public boolean wasNull() {
-            return row.isNull(index);
-        }
-
-        public Object getObjectValue() {
-            return getDouble();
-        }
-    }
-
-    static class StringCasAccessor implements CasAccessor, StringAccessor {
-        private final int index;
-        private Row row;
-        private boolean isNull;
-
-        StringCasAccessor(int index) {
-            this.index = index;
-        }
-
-        public String getString() {
-            return row.isNull(index) ? null : row.getString(index);
-        }
-
-        public boolean wasNull() {
-            return row.isNull(index);
-        }
-
-        public Object getObjectValue() {
-            return getString();
-        }
-    }
-
     private static class CassandraSelectBuilder implements SelectBuilder {
+        private Session session;
+        private SqlService sqlService;
         private final GlobType globType;
         private final Constraint constraint;
-        private Map<Field, SelectData> selectedField = new HashMap<>();
+        private Map<Field, CasAccessor> fieldToAccessorHolder = new HashMap<>();
+        private int top;
+        private List<CassandraSelectQuery.Order> orders = new ArrayList<>();
+        private Set<Field> distinct = new HashSet<>();
 
-        public CassandraSelectBuilder(GlobType globType, Constraint constraint) {
+        public CassandraSelectBuilder(Session session, SqlService sqlService, GlobType globType, Constraint constraint) {
+            this.session = session;
+            this.sqlService = sqlService;
             this.globType = globType;
             this.constraint = constraint;
         }
 
         public SelectQuery getQuery() {
-            return null;
+            return new CassandraSelectQuery(session, constraint, fieldToAccessorHolder,sqlService, true, orders, top, distinct);
         }
 
         public SelectQuery getNotAutoCloseQuery() {
-            return null;
+            return new CassandraSelectQuery(session, constraint, fieldToAccessorHolder,sqlService, true, orders, top, distinct);
         }
 
         public SelectBuilder select(Field field) {
-            return null;
+            FieldToCassandraAccessorVisitor visitor = new FieldToCassandraAccessorVisitor();
+            field.safeVisit(visitor);
+            fieldToAccessorHolder.put(field, visitor.getAccessor());
+            return this;
         }
 
         public SelectBuilder selectAll() {
-            return null;
+            for (Field field : globType.getFields()) {
+                select(field);
+            }
+            return this;
         }
 
-        public SelectBuilder select(IntegerField field, Ref<IntegerAccessor> accessor) {
-            return null;
+        public SelectBuilder select(IntegerField field, Ref<IntegerAccessor> ref) {
+            return createAccessor(field, ref, new IntegerCasAccessor());
         }
 
         public SelectBuilder select(LongField field, Ref<LongAccessor> accessor) {
-            return null;
+            return createAccessor(field, accessor, new LongCasAccessor());
         }
 
-        public SelectBuilder select(BooleanField field, Ref<BooleanAccessor> accessor) {
-            return null;
+        public SelectBuilder select(BooleanField field, Ref<BooleanAccessor> ref) {
+            return createAccessor(field, ref, new BooleanCasAccessor());
         }
 
-        public SelectBuilder select(StringField field, Ref<StringAccessor> accessor) {
-            return null;
+        public SelectBuilder select(StringField field, Ref<StringAccessor> ref) {
+            return createAccessor(field, ref, new StringSqlAccessor());
         }
 
-        public SelectBuilder select(DoubleField field, Ref<DoubleAccessor> accessor) {
-            return null;
+        public SelectBuilder select(DoubleField field, Ref<DoubleAccessor> ref) {
+            return createAccessor(field, ref, new DoubleSqlAccessor());
         }
 
         public SelectBuilder select(BlobField field, Ref<BlobAccessor> accessor) {
-            return null;
+            return createAccessor(field, accessor, new BlobSqlAccessor());
         }
 
         public SelectBuilder orderAsc(Field field) {
-            return null;
+            orders.add(new CassandraSelectQuery.Order(field, true));
+            return this;
         }
 
         public SelectBuilder orderDesc(Field field) {
-            return null;
+            orders.add(new CassandraSelectQuery.Order(field, false));
+            return this;
         }
 
         public SelectBuilder top(int n) {
-            return null;
+            top = n;
+            return this;
         }
 
         public SelectBuilder withKeys() {
-            return null;
+            Arrays.stream(globType.getKeyFields()).forEach(this::retrieveUnTyped);
+            return this;
         }
 
-        public IntegerAccessor retrieve(IntegerField field) {
-            return null;
-        }
-
-        public LongAccessor retrieve(LongField field) {
-            return null;
-        }
-
-        public StringAccessor retrieve(StringField field) {
-            return null;
+        public SelectBuilder distinct(Collection<Field> fields) {
+            this.distinct.addAll(fields);
+            return this;
         }
 
         public BooleanAccessor retrieve(BooleanField field) {
-            return null;
+            BooleanCasAccessor accessor = new BooleanCasAccessor();
+            fieldToAccessorHolder.put(field, accessor);
+            return accessor;
+        }
+
+        public IntegerAccessor retrieve(IntegerField field) {
+            IntegerCasAccessor accessor = new IntegerCasAccessor();
+            fieldToAccessorHolder.put(field, accessor);
+            return accessor;
+        }
+
+        public LongAccessor retrieve(LongField field) {
+            LongCasAccessor accessor = new LongCasAccessor();
+            fieldToAccessorHolder.put(field, accessor);
+            return accessor;
+        }
+
+        public StringAccessor retrieve(StringField field) {
+            StringCasAccessor accessor = new StringCasAccessor();
+            fieldToAccessorHolder.put(field, accessor);
+            return accessor;
         }
 
         public DoubleAccessor retrieve(DoubleField field) {
-            return null;
+            DoubleCasAccessor accessor = new DoubleCasAccessor();
+            fieldToAccessorHolder.put(field, accessor);
+            return accessor;
         }
 
         public BlobAccessor retrieve(BlobField field) {
-            return null;
+            BlobCasAccessor accessor = new BlobCasAccessor();
+            fieldToAccessorHolder.put(field, accessor);
+            return accessor;
         }
 
         public Accessor retrieveUnTyped(Field field) {
-            return null;
+            AccessorToFieldVisitor visitor = new AccessorToFieldVisitor();
+            field.safeVisit(visitor);
+            return visitor.get();
+        }
+
+        private <T extends Accessor, D extends T> SelectBuilder createAccessor(Field field, Ref<T> ref, D accessor) {
+            ref.set(accessor);
+            fieldToAccessorHolder.put(field, (CasAccessor) accessor);
+            return this;
+        }
+
+        private class AccessorToFieldVisitor implements FieldVisitor {
+            private Accessor accessor;
+
+            public AccessorToFieldVisitor() {
+            }
+
+            public void visitInteger(IntegerField field) throws Exception {
+                accessor = retrieve(field);
+            }
+
+            public void visitDouble(DoubleField field) throws Exception {
+                accessor = retrieve(field);
+            }
+
+            public void visitString(StringField field) throws Exception {
+                accessor = retrieve(field);
+            }
+
+            public void visitBoolean(BooleanField field) throws Exception {
+                accessor = retrieve(field);
+            }
+
+            public void visitBlob(BlobField field) throws Exception {
+                accessor = retrieve(field);
+            }
+
+            public void visitLong(LongField field) throws Exception {
+                accessor = retrieve(field);
+            }
+
+            public Accessor get() {
+                return accessor;
+            }
         }
     }
 }
