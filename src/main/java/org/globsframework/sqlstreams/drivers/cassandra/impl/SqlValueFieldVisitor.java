@@ -7,12 +7,12 @@ import java.nio.ByteBuffer;
 
 
 public class SqlValueFieldVisitor implements FieldVisitor {
-    private final BoundStatement bind;
+    private final BoundStatement boundStatement;
     private Object value;
     private int index;
 
-    public SqlValueFieldVisitor(BoundStatement bind) {
-        this.bind = bind;
+    public SqlValueFieldVisitor(BoundStatement boundStatement) {
+        this.boundStatement = boundStatement;
     }
 
     public void setValue(Object value, int index) {
@@ -22,49 +22,49 @@ public class SqlValueFieldVisitor implements FieldVisitor {
 
     public void visitInteger(IntegerField field) throws Exception {
         if (value == null) {
-            bind.setToNull(index);
+            boundStatement.setToNull(index);
         } else {
-            bind.setInt(index, (Integer) value);
+            boundStatement.setInt(index, (Integer) value);
         }
     }
 
     public void visitLong(LongField field) throws Exception {
         if (value == null) {
-            bind.setToNull(index);
+            boundStatement.setToNull(index);
         } else {
-            bind.setLong(index, (Long) value);
+            boundStatement.setLong(index, (Long) value);
         }
     }
 
     public void visitDouble(DoubleField field) throws Exception {
         if (value == null) {
-            bind.setToNull(index);
+            boundStatement.setToNull(index);
         } else {
-            bind.setDouble(index, (Double) value);
+            boundStatement.setDouble(index, (Double) value);
         }
     }
 
     public void visitString(StringField field) throws Exception {
         if (value == null) {
-            bind.setToNull(index);
+            boundStatement.setToNull(index);
         } else {
-            bind.setString(index, (String) value);
+            boundStatement.setString(index, (String) value);
         }
     }
 
     public void visitBoolean(BooleanField field) throws Exception {
         if (value == null) {
-            bind.setToNull(index);
+            boundStatement.setToNull(index);
         } else {
-            bind.setBool(index, (Boolean) value);
+            boundStatement.setBool(index, (Boolean) value);
         }
     }
 
     public void visitBlob(BlobField field) throws Exception {
         if (value == null) {
-            bind.setToNull(index);
+            boundStatement.setToNull(index);
         } else {
-            bind.setBytesUnsafe(index, ByteBuffer.wrap(((byte[]) value)));
+            boundStatement.setBytesUnsafe(index, ByteBuffer.wrap(((byte[]) value)));
         }
     }
 }

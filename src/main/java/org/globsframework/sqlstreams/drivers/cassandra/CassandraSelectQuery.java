@@ -158,7 +158,7 @@ public class CassandraSelectQuery implements SelectQuery {
 
     public void close() {
         if (preparedStatement != null) {
-            preparedStatement.close();
+//            preparedStatement.close();
             preparedStatement = null;
         }
     }
