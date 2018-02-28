@@ -176,7 +176,7 @@ public class MongoSelectBuilder implements SelectBuilder {
     }
 
     public Accessor retrieveUnTyped(Field field) {
-        return field.safeVisit(MONGO_FIELD_VISITOR, this).accessor;
+        return fieldsAndAccessor.computeIfAbsent(field, (f) -> field.safeVisit(MONGO_FIELD_VISITOR, this).accessor);
     }
 
     static class MongoFieldVisitor implements FieldVisitorWithContext<MongoSelectBuilder> {

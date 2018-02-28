@@ -12,6 +12,7 @@ import org.globsframework.sqlstreams.SqlService;
 import org.globsframework.sqlstreams.constraints.Constraint;
 import org.globsframework.sqlstreams.drivers.cassandra.impl.ValueConstraintVisitor;
 import org.globsframework.sqlstreams.drivers.cassandra.impl.WhereClauseConstraintVisitor;
+import org.globsframework.sqlstreams.drivers.jdbc.AccessorGlobBuilder;
 import org.globsframework.sqlstreams.drivers.jdbc.AccessorGlobsBuilder;
 import org.globsframework.sqlstreams.utils.StringPrettyWriter;
 import org.globsframework.streams.GlobStream;
@@ -134,10 +135,10 @@ public class CassandraSelectQuery implements SelectQuery {
 
     public GlobList executeAsGlobs() {
         GlobStream globStream = execute();
-        AccessorGlobsBuilder accessorGlobsBuilder = AccessorGlobsBuilder.init(globStream);
+        AccessorGlobBuilder accessorGlobsBuilder = AccessorGlobBuilder.init(globStream);
         GlobList result = new GlobList();
         while (globStream.next()) {
-            result.addAll(accessorGlobsBuilder.getGlobs());
+            result.add(accessorGlobsBuilder.getGlob());
         }
         return result;
     }

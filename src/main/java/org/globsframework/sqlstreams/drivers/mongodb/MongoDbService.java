@@ -2,7 +2,6 @@ package org.globsframework.sqlstreams.drivers.mongodb;
 
 import com.mongodb.client.MongoDatabase;
 import org.globsframework.metamodel.Field;
-import org.globsframework.metamodel.GlobType;
 import org.globsframework.sqlstreams.SqlConnection;
 import org.globsframework.sqlstreams.utils.AbstractSqlService;
 
