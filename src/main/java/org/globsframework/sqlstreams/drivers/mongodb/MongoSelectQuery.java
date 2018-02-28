@@ -277,15 +277,48 @@ public class MongoSelectQuery implements SelectQuery {
         }
 
         public void visitBiggerThan(BiggerThanConstraint constraint) {
-            throw new RuntimeException("Not implemented");
+            ExtractOperandVisitor leftOp = new ExtractOperandVisitor();
+            constraint.getLeftOperand().visitOperand(leftOp);
+            ExtractOperandVisitor rightOp = new ExtractOperandVisitor();
+            constraint.getRightOperand().visitOperand(rightOp);
+
+            if (leftOp.field != null && rightOp.field == null) {
+                filter = Filters.gte(sqlService.getColumnName(leftOp.field), adaptData(leftOp.field, rightOp.value));
+            } else if (rightOp.field != null && leftOp.field == null) {
+                filter = Filters.lt(sqlService.getColumnName(rightOp.field), adaptData(rightOp.field, leftOp.value));
+            } else {
+                throw new RuntimeException("Can only call equal between field and value");
+            }
         }
 
         public void visitStrictlyBiggerThan(StrictlyBiggerThanConstraint constraint) {
-            throw new RuntimeException("Not implemented");
+            ExtractOperandVisitor leftOp = new ExtractOperandVisitor();
+            constraint.getLeftOperand().visitOperand(leftOp);
+            ExtractOperandVisitor rightOp = new ExtractOperandVisitor();
+            constraint.getRightOperand().visitOperand(rightOp);
+
+            if (leftOp.field != null && rightOp.field == null) {
+                filter = Filters.gt(sqlService.getColumnName(leftOp.field), adaptData(leftOp.field, rightOp.value));
+            } else if (rightOp.field != null && leftOp.field == null) {
+                filter = Filters.lte(sqlService.getColumnName(rightOp.field), adaptData(rightOp.field, leftOp.value));
+            } else {
+                throw new RuntimeException("Can only call equal between field and value");
+            }
         }
 
         public void visitStrictlyLesserThan(StrictlyLesserThanConstraint constraint) {
-            throw new RuntimeException("Not implemented");
+            ExtractOperandVisitor leftOp = new ExtractOperandVisitor();
+            constraint.getLeftOperand().visitOperand(leftOp);
+            ExtractOperandVisitor rightOp = new ExtractOperandVisitor();
+            constraint.getRightOperand().visitOperand(rightOp);
+
+            if (leftOp.field != null && rightOp.field == null) {
+                filter = Filters.lt(sqlService.getColumnName(leftOp.field), adaptData(leftOp.field, rightOp.value));
+            } else if (rightOp.field != null && leftOp.field == null) {
+                filter = Filters.gte(sqlService.getColumnName(rightOp.field), adaptData(rightOp.field, leftOp.value));
+            } else {
+                throw new RuntimeException("Can only call equal between field and value");
+            }
         }
 
         public void visitIn(InConstraint constraint) {
