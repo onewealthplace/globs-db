@@ -9,6 +9,7 @@ import org.globsframework.metamodel.fields.*;
 import org.globsframework.metamodel.index.Index;
 import org.globsframework.metamodel.index.impl.IsUniqueIndexVisitor;
 import org.globsframework.model.Glob;
+import org.globsframework.sqlstreams.BulkDbRequest;
 import org.globsframework.sqlstreams.CreateBuilder;
 import org.globsframework.sqlstreams.SqlRequest;
 import org.globsframework.sqlstreams.SqlService;
@@ -128,7 +129,7 @@ public class MongoUtils {
                 }).accessor;
                 createBuilder.setObject(field, accessor);
             }
-            SqlRequest request = createBuilder.getRequest();
+            BulkDbRequest request = createBuilder.getBulkRequest();
             for (Glob glob : globTypeListEntry.getValue()) {
                 ref.set(glob);
                 request.run();
@@ -136,7 +137,6 @@ public class MongoUtils {
             request.close();
         }
     }
-
 
     static class DoubleGlobAccessor implements DoubleAccessor {
         private final DoubleField field;

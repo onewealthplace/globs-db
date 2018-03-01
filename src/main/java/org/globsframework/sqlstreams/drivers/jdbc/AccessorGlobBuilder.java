@@ -17,7 +17,10 @@ public class AccessorGlobBuilder {
     private List<Pair<Field, Accessor>> accessors = new ArrayList<>();
 
     public AccessorGlobBuilder(GlobStream globStream) {
-        GlobType globType = null;
+        this(globStream, null);
+    }
+
+    public AccessorGlobBuilder(GlobStream globStream, GlobType globType) {
         for (Field field : globStream.getFields()) {
             if (globType == null) {
                 globType = field.getGlobType();
@@ -25,6 +28,9 @@ public class AccessorGlobBuilder {
                 throw new RuntimeException("Multiple type " + globType.getName() + " and " + field.getGlobType().getName());
             }
             accessors.add(new Pair<>(field, getAccessor(globStream, field)));
+        }
+        if (globType == null) {
+            throw new RuntimeException("No field selected");
         }
         type = globType;
     }
@@ -34,14 +40,17 @@ public class AccessorGlobBuilder {
     }
 
     public static AccessorGlobBuilder init(GlobStream globStream) {
-        return new AccessorGlobBuilder(globStream);
+        return new AccessorGlobBuilder(globStream, null);
+    }
+
+    public static AccessorGlobBuilder init(GlobStream globStream, GlobType globType) {
+        return new AccessorGlobBuilder(globStream, globType);
     }
 
     public MutableGlob getGlob() {
         MutableGlob defaultGlob = type.instantiate();
         for (Pair<Field, Accessor> pair : accessors) {
             defaultGlob.setValue(pair.getFirst(), pair.getSecond().getObjectValue());
-
         }
         return defaultGlob;
     }

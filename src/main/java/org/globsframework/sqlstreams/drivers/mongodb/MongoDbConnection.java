@@ -2,7 +2,9 @@ package org.globsframework.sqlstreams.drivers.mongodb;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Updates;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
@@ -17,14 +19,9 @@ import org.globsframework.sqlstreams.exceptions.SqlException;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.streams.accessors.utils.*;
 
-import java.util.ArrayList;
-import java.sql.Connection;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class MongoDbConnection implements SqlConnection {
     MongoDatabase mongoDatabase;
@@ -48,7 +45,7 @@ public class MongoDbConnection implements SqlConnection {
     }
 
     public UpdateBuilder getUpdateBuilder(GlobType globType, Constraint constraint) {
-        throw new RuntimeException("Not Implemented");
+        return new MongoUpdateBuilder(mongoDatabase, globType, sqlService, constraint);
     }
 
     public SqlRequest getDeleteRequest(GlobType globType) {
@@ -85,216 +82,6 @@ public class MongoDbConnection implements SqlConnection {
         MongoUtils.fill(all, sqlService);
     }
 
-    private static class MongoCreateBuilder implements CreateBuilder {
-        private final MongoDatabase mongoDatabase;
-        private final GlobType globType;
-        private final MongoDbService sqlService;
-        Map<Field, Accessor> fieldsValues = new HashMap<>();
-
-        public MongoCreateBuilder(MongoDatabase mongoDatabase, GlobType globType, MongoDbService sqlService) {
-            this.mongoDatabase = mongoDatabase;
-            this.globType = globType;
-            this.sqlService = sqlService;
-        }
-
-        public CreateBuilder set(IntegerField field, Integer value) {
-            fieldsValues.put(field, new ValueIntegerAccessor(value));
-            return this;
-        }
-
-        public CreateBuilder set(BlobField field, byte[] value) {
-            fieldsValues.put(field, new ValueBlobAccessor(value));
-            return this;
-        }
-
-        public CreateBuilder set(StringField field, String value) {
-            fieldsValues.put(field, new ValueStringAccessor(value));
-            return this;
-        }
-
-        public CreateBuilder set(DoubleField field, Double value) {
-            fieldsValues.put(field, new ValueDoubleAccessor(value));
-            return this;
-        }
-
-        public CreateBuilder set(BooleanField field, Boolean value) {
-            fieldsValues.put(field, new ValueBooleanAccessor(value));
-            return this;
-        }
-
-        public CreateBuilder set(LongField field, Long value) {
-            fieldsValues.put(field, new ValueLongAccessor(value));
-            return this;
-        }
-
-        public CreateBuilder set(IntegerField field, IntegerAccessor accessor) {
-            fieldsValues.put(field, accessor);
-            return this;
-        }
-
-        public CreateBuilder set(LongField field, LongAccessor accessor) {
-            fieldsValues.put(field, accessor);
-            return this;
-        }
-
-        public CreateBuilder set(StringField field, StringAccessor accessor) {
-            fieldsValues.put(field, accessor);
-            return this;
-        }
-
-        public CreateBuilder set(DoubleField field, DoubleAccessor accessor) {
-            fieldsValues.put(field, accessor);
-            return this;
-        }
-
-        public CreateBuilder set(BooleanField field, BooleanAccessor accessor) {
-            fieldsValues.put(field, accessor);
-            return this;
-        }
-
-        public CreateBuilder set(BlobField field, BlobAccessor accessor) {
-            fieldsValues.put(field, accessor);
-            return this;
-        }
-
-        public CreateBuilder setObject(Field field, Accessor accessor) {
-            fieldsValues.put(field, accessor);
-            return this;
-        }
-
-        public CreateBuilder setObject(Field field, Object value) {
-            field.safeVisit(new FieldValueVisitor() {
-                public void visitInteger(IntegerField field, Integer value) throws Exception {
-                    set(field, value);
-                }
-
-                public void visitDouble(DoubleField field, Double value) throws Exception {
-                    set(field, value);
-                }
-
-                public void visitString(StringField field, String value) throws Exception {
-                    set(field, value);
-                }
-
-                public void visitBoolean(BooleanField field, Boolean value) throws Exception {
-                    set(field, value);
-                }
-
-                public void visitLong(LongField field, Long value) throws Exception {
-                    set(field, value);
-                }
-
-                public void visitBlob(BlobField field, byte[] value) throws Exception {
-                    set(field, value);
-                }
-            }, value);
-            return this;
-        }
-
-        public SqlRequest getRequest() {
-            return new MongoCreateSqlRequest(mongoDatabase.getCollection(sqlService.getTableName(globType)), fieldsValues, sqlService, false);
-        }
-
-        public BulkDbRequest getBulkRequest() {
-            return new MongoCreateSqlRequest(mongoDatabase.getCollection(sqlService.getTableName(globType)), fieldsValues, sqlService, true);
-        }
-
-        private static class MongoCreateSqlRequest implements BulkDbRequest {
-            private MongoCollection<Document> collection;
-            private Map<Field, Accessor> fieldsValues;
-            private MongoDbService sqlService;
-            private boolean bulk;
-            private List<Document> docs;
-            CompletableFuture<Boolean> completableFuture;
-            private int count = 0;
-
-            public MongoCreateSqlRequest(MongoCollection<Document> collection,
-                                         Map<Field, Accessor> fieldsValues, MongoDbService sqlService, boolean bulk) {
-                this.collection = collection;
-                this.fieldsValues = fieldsValues;
-                this.sqlService = sqlService;
-                this.bulk = bulk;
-            }
-
-            public void run() throws SqlException {
-                Document doc = new Document();
-                for (Map.Entry<Field, Accessor> fieldAccessorEntry : fieldsValues.entrySet()) {
-                    Object objectValue = fieldAccessorEntry.getValue().getObjectValue();
-                    if (objectValue != null) {
-                        if (fieldAccessorEntry.getKey().hasAnnotation(DbRef.KEY)) {
-                            Document document = new Document();
-                            document.append(MongoUtils.DB_REF_ID_EXT, new ObjectId((String) objectValue));
-                            doc.append(MongoUtils.getDbName(fieldAccessorEntry.getKey()), document);
-                        } else {
-                            doc.append(MongoUtils.getFullDbName(fieldAccessorEntry.getKey()), objectValue);
-                        }
-                    }
-                }
-
-                if (++count <= 2 || bulk) {
-                    collection.insertOne(doc);
-                } else {
-                    if (docs == null) {
-                        docs = new ArrayList<>(100);
-                    }
-                    docs.add(doc);
-                    if (docs.size() == 100) {
-                        if (completableFuture != null) {
-                            if (completableFuture.isCompletedExceptionally()) {
-                                try {
-                                    completableFuture.get();
-                                } catch (Exception e) {
-                                    throw new RuntimeException("Create failed ", e);
-                                }
-                            }
-                            final List<Document> toInsert = docs;
-                            docs = null;
-                            completableFuture = completableFuture.
-                                  thenApply(ok -> {
-                                      collection.insertMany(toInsert);
-                                      return true;
-                                  });
-                        } else {
-                            final List<Document> toInsert = docs;
-                            docs = null;
-                            completableFuture = CompletableFuture.supplyAsync(() -> {
-                                collection.insertMany(toInsert);
-                                return Boolean.TRUE;
-                            }, sqlService.getExecutor());
-                        }
-                    }
-                }
-            }
-
-            public void close() {
-                if (completableFuture != null) {
-                    if (docs != null && !docs.isEmpty()) {
-                        completableFuture = completableFuture.thenApply(ok -> {
-                            collection.insertMany(docs);
-                            return true;
-                        });
-                    }
-                    try {
-                        completableFuture.get(1, TimeUnit.MINUTES);
-                        completableFuture = null;
-                    } catch (Exception e) {
-                        completableFuture = null;
-                        throw new RuntimeException("In close, fail to insert all data", e);
-                    }
-                }
-                else {
-                    if (docs != null && !docs.isEmpty()) {
-                        collection.insertMany(docs);
-                    }
-                }
-            }
-
-            public void flush() {
-                close();
-            }
-        }
-    }
-
     public interface IsComplete {
         boolean complete();
     }
@@ -315,5 +102,167 @@ public class MongoDbConnection implements SqlConnection {
             }
         }
         return true;
+    }
+
+    private static class MongoUpdateBuilder implements UpdateBuilder {
+        private final MongoDatabase mongoDatabase;
+        private final GlobType globType;
+        private SqlService sqlService;
+        private final Constraint constraint;
+        private final Map<Field, Accessor> fieldsValues = new HashMap<>();
+
+        public MongoUpdateBuilder(MongoDatabase mongoDatabase, GlobType globType, SqlService sqlService, Constraint constraint) {
+            this.mongoDatabase = mongoDatabase;
+            this.globType = globType;
+            this.sqlService = sqlService;
+            this.constraint = constraint;
+        }
+
+        public UpdateBuilder updateUntyped(Field field, Object value) {
+            field.safeVisit(new FieldValueVisitor() {
+                public void visitInteger(IntegerField field, Integer value) throws Exception {
+                    update(field, value);
+                }
+
+                public void visitDouble(DoubleField field, Double value) throws Exception {
+                    update(field, value);
+                }
+
+                public void visitString(StringField field, String value) throws Exception {
+                    update(field, value);
+                }
+
+                public void visitBoolean(BooleanField field, Boolean value) throws Exception {
+                    update(field, value);
+                }
+
+                public void visitLong(LongField field, Long value) throws Exception {
+                    update(field, value);
+                }
+
+                public void visitBlob(BlobField field, byte[] value) throws Exception {
+                    update(field, value);
+                }
+            }, value);
+
+            return this;
+        }
+
+        public UpdateBuilder updateUntyped(Field field, Accessor accessor) {
+            fieldsValues.put(field, accessor);
+            return this;
+        }
+
+        public UpdateBuilder update(IntegerField field, IntegerAccessor accessor) {
+            fieldsValues.put(field, accessor);
+            return this;
+        }
+
+        public UpdateBuilder update(IntegerField field, Integer value) {
+            fieldsValues.put(field, new ValueIntegerAccessor(value));
+            return this;
+        }
+
+        public UpdateBuilder update(LongField field, LongAccessor accessor) {
+            fieldsValues.put(field, accessor);
+            return this;
+        }
+
+        public UpdateBuilder update(LongField field, Long value) {
+            fieldsValues.put(field, new ValueLongAccessor(value));
+            return this;
+        }
+
+        public UpdateBuilder update(DoubleField field, DoubleAccessor accessor) {
+            fieldsValues.put(field, accessor);
+            return this;
+        }
+
+        public UpdateBuilder update(DoubleField field, Double value) {
+            fieldsValues.put(field, new ValueDoubleAccessor(value));
+            return this;
+        }
+
+        public UpdateBuilder update(StringField field, StringAccessor accessor) {
+            fieldsValues.put(field, accessor);
+            return this;
+        }
+
+        public UpdateBuilder update(StringField field, String value) {
+            fieldsValues.put(field, new ValueStringAccessor(value));
+            return this;
+        }
+
+        public UpdateBuilder update(BooleanField field, BooleanAccessor accessor) {
+            fieldsValues.put(field, accessor);
+            return this;
+        }
+
+        public UpdateBuilder update(BooleanField field, Boolean value) {
+            fieldsValues.put(field, new ValueBooleanAccessor(value));
+            return this;
+        }
+
+        public UpdateBuilder update(BlobField field, byte[] value) {
+            fieldsValues.put(field, new ValueBlobAccessor(value));
+            return this;
+        }
+
+        public UpdateBuilder update(BlobField field, BlobAccessor accessor) {
+            fieldsValues.put(field, accessor);
+            return this;
+        }
+
+        public SqlRequest getRequest() {
+            return new MongoSqlRequest(sqlService, mongoDatabase, globType, constraint, fieldsValues);
+        }
+
+        private static class MongoSqlRequest implements SqlRequest {
+            private final MongoCollection<Document> collection;
+            private SqlService sqlService;
+            private final MongoDatabase mongoDatabase;
+            private final GlobType globType;
+            private final Constraint constraint;
+            private final Map<Field, Accessor> fieldsValues;
+
+            public MongoSqlRequest(SqlService sqlService, MongoDatabase mongoDatabase, GlobType globType, Constraint constraint, Map<Field, Accessor> fieldsValues) {
+                this.sqlService = sqlService;
+                this.mongoDatabase = mongoDatabase;
+                this.globType = globType;
+                this.constraint = constraint;
+                this.fieldsValues = fieldsValues;
+                collection = mongoDatabase.getCollection(sqlService.getTableName(globType));
+            }
+
+            public void run() throws SqlException {
+                Bson filter;
+                if (constraint != null) {
+                    MongoConstraintVisitor constraintVisitor = new MongoConstraintVisitor(sqlService);
+                    constraint.visit(constraintVisitor);
+                    filter = constraintVisitor.filter;
+                } else {
+                    filter = new Document();
+                }
+                Bson combine = Updates.combine(fieldsValues.entrySet().stream().map(entry -> {
+                    Object objectValue = entry.getValue().getObjectValue();
+                    Field field = entry.getKey();
+                    if (field.hasAnnotation(DbRef.KEY)) {
+                        String type = field.getAnnotation(DbRef.KEY).get(DbRef.TO);
+                        Document document = new Document();
+                        document.append(MongoUtils.DB_REF_ID_EXT, new ObjectId((String) objectValue));
+                        document.append(MongoUtils.DB_REF_REF_EXT, type);
+                        return Updates.set(MongoUtils.getDbName(field), document);
+                    } else {
+                        return Updates.set(sqlService.getColumnName(field), objectValue);
+                    }
+
+                }).collect(Collectors.toList()));
+                collection.updateOne(filter, combine);
+            }
+
+            public void close() {
+
+            }
+        }
     }
 }
