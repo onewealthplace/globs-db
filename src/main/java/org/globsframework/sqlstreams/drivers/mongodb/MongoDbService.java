@@ -21,11 +21,6 @@ public class MongoDbService extends AbstractSqlService {
         return new MongoDbConnection(database, this);
     }
 
-
-    public String getTableName(GlobType globType) {
-        return globType.getName();
-    }
-
     public String getColumnName(Field field) {
         return MongoUtils.getFullDbName(field);
     }
