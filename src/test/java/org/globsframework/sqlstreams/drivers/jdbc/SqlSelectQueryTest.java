@@ -23,7 +23,6 @@ import org.junit.Test;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Arrays;
 import java.util.Collections;
 
 import static org.globsframework.sqlstreams.constraints.Constraints.and;
@@ -130,15 +129,15 @@ public class SqlSelectQueryTest extends DbServicesTestCase {
 
         assertEquals(1, execute(Constraints.lessUncheck(DummyObject.VALUE, 1.2)).get(DummyObject.ID).intValue());
         assertEquals(1, execute(Constraints.lessUncheck(DummyObject.VALUE, 1.1)).get(DummyObject.ID).intValue());
-        assertEquals(1, execute(Constraints.Lesser(DummyObject.VALUE, 1.2)).get(DummyObject.ID).intValue());
-        assertEquals(2, execute(Constraints.greater(DummyObject.VALUE, 1.2)).get(DummyObject.ID).intValue());
-        assertEquals(2, execute(Constraints.greater(DummyObject.VALUE, 2.2)).get(DummyObject.ID).intValue());
+        assertEquals(1, execute(Constraints.LesserUnchecked(DummyObject.VALUE, 1.2)).get(DummyObject.ID).intValue());
+        assertEquals(2, execute(Constraints.greaterUnchecked(DummyObject.VALUE, 1.2)).get(DummyObject.ID).intValue());
+        assertEquals(2, execute(Constraints.greaterUnchecked(DummyObject.VALUE, 2.2)).get(DummyObject.ID).intValue());
         assertEquals(2, execute(Constraints.strictlyGreater(DummyObject.VALUE, 1.2)).get(DummyObject.ID).intValue());
         checkEmpty(Constraints.strictlyGreater(DummyObject.VALUE, 2.2));
-        checkEmpty(Constraints.Lesser(DummyObject.VALUE, 1.1));
+        checkEmpty(Constraints.LesserUnchecked(DummyObject.VALUE, 1.1));
         checkEmpty(Constraints.strictlyGreater(DummyObject.VALUE, 3.2));
-        checkEmpty(Constraints.Lesser(DummyObject.VALUE, 0.1));
-        checkEmpty(Constraints.greater(DummyObject.VALUE, 3.2));
+        checkEmpty(Constraints.LesserUnchecked(DummyObject.VALUE, 0.1));
+        checkEmpty(Constraints.greaterUnchecked(DummyObject.VALUE, 3.2));
         checkEmpty(Constraints.lessUncheck(DummyObject.VALUE, 0.1));
     }
 

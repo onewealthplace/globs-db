@@ -7,7 +7,9 @@ import org.globsframework.sqlstreams.constraints.impl.*;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.exceptions.UnexpectedApplicationState;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class Constraints {
@@ -78,7 +80,7 @@ public class Constraints {
         return new EqualConstraint(new FieldOperand(field), new AccessorOperand(field, accessor));
     }
 
-    public static Constraint greater(Field field, Object value) {
+    public static Constraint greaterUnchecked(Field field, Object value) {
         return new BiggerThanConstraint(new FieldOperand(field), new ValueOperand(field, value));
     }
 
@@ -90,7 +92,7 @@ public class Constraints {
         return new BiggerThanConstraint(new FieldOperand(field), new ValueOperand(field, value));
     }
 
-    public static Constraint greater(Field field, Accessor accessor) {
+    public static Constraint greaterUnchecked(Field field, Accessor accessor) {
         return new BiggerThanConstraint(new FieldOperand(field), new AccessorOperand(field, accessor));
     }
 
@@ -98,7 +100,7 @@ public class Constraints {
         return new LessThanConstraint(new FieldOperand(field), new ValueOperand(field, value));
     }
 
-    public static Constraint less(Field field1, Field field2) {
+    public static Constraint lessUnchecked(Field field1, Field field2) {
         return new LessThanConstraint(new FieldOperand(field1), new FieldOperand(field2));
     }
 
@@ -106,7 +108,7 @@ public class Constraints {
         return new LessThanConstraint(new FieldOperand(field), new ValueOperand(field, value));
     }
 
-    public static Constraint less(Field field, Accessor accessor) {
+    public static Constraint lessUnchecked(Field field, Accessor accessor) {
         return new LessThanConstraint(new FieldOperand(field), new AccessorOperand(field, accessor));
     }
 
@@ -126,7 +128,7 @@ public class Constraints {
         return new StrictlyBiggerThanConstraint(new FieldOperand(field), new AccessorOperand(field, accessor));
     }
 
-    public static Constraint Lesser(Field field, Object value) {
+    public static Constraint LesserUnchecked(Field field, Object value) {
         return new StrictlyLesserThanConstraint(new FieldOperand(field), new ValueOperand(field, value));
     }
 
@@ -156,6 +158,15 @@ public class Constraints {
         return and(arg1, and(arg2, arg3));
     }
 
+    public static Constraint and(Constraint...args){
+        Constraint root = null;
+        for (int i = 0; i < args.length; i++) {
+            Constraint constraint = args[i];
+            root = Constraints.and(root, constraint);
+        }
+        return root;
+    }
+
     public static Constraint or(Constraint arg1, Constraint arg2) {
         if (arg1 == null) {
             return arg2;
@@ -164,6 +175,15 @@ public class Constraints {
             return arg1;
         }
         return new OrConstraint(arg1, arg2);
+    }
+
+    public static Constraint or(Constraint...args) {
+        Constraint root = null;
+        for (int i = 0; i < args.length; i++) {
+            Constraint constraint = args[i];
+            root = Constraints.or(root, constraint);
+        }
+        return root;
     }
 
     public static Constraint in(Field field, Set infos) {
