@@ -18,6 +18,8 @@ import org.globsframework.sqlstreams.exceptions.RollbackFailed;
 import org.globsframework.sqlstreams.exceptions.SqlException;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.streams.accessors.utils.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -105,6 +107,7 @@ public class MongoDbConnection implements SqlConnection {
     }
 
     private static class MongoUpdateBuilder implements UpdateBuilder {
+        private static final Logger LOGGER = LoggerFactory.getLogger(MongoSelectBuilder.class);
         private final MongoDatabase mongoDatabase;
         private final GlobType globType;
         private SqlService sqlService;
@@ -258,6 +261,7 @@ public class MongoDbConnection implements SqlConnection {
 
                 }).collect(Collectors.toList()));
                 collection.updateOne(filter, combine);
+                LOGGER.info("Update with filter " + filter + " on " + combine);
             }
 
             public void close() {
