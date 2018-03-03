@@ -1,26 +1,17 @@
 package org.globsframework.sqlstreams.drivers.mongodb;
 
-import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import org.bson.Document;
-import org.bson.types.ObjectId;
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
 import org.globsframework.metamodel.fields.*;
 import org.globsframework.sqlstreams.BulkDbRequest;
 import org.globsframework.sqlstreams.CreateBuilder;
 import org.globsframework.sqlstreams.SqlRequest;
-import org.globsframework.sqlstreams.annotations.DbRef;
-import org.globsframework.sqlstreams.exceptions.SqlException;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.streams.accessors.utils.*;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 public class MongoCreateBuilder implements CreateBuilder {
     private final MongoDatabase mongoDatabase;
@@ -101,27 +92,27 @@ public class MongoCreateBuilder implements CreateBuilder {
 
     public CreateBuilder setObject(Field field, Object value) {
         field.safeVisit(new FieldValueVisitor() {
-            public void visitInteger(IntegerField field, Integer value) throws Exception {
+            public void visitInteger(IntegerField field, Integer value) {
                 set(field, value);
             }
 
-            public void visitDouble(DoubleField field, Double value) throws Exception {
+            public void visitDouble(DoubleField field, Double value) {
                 set(field, value);
             }
 
-            public void visitString(StringField field, String value) throws Exception {
+            public void visitString(StringField field, String value) {
                 set(field, value);
             }
 
-            public void visitBoolean(BooleanField field, Boolean value) throws Exception {
+            public void visitBoolean(BooleanField field, Boolean value) {
                 set(field, value);
             }
 
-            public void visitLong(LongField field, Long value) throws Exception {
+            public void visitLong(LongField field, Long value) {
                 set(field, value);
             }
 
-            public void visitBlob(BlobField field, byte[] value) throws Exception {
+            public void visitBlob(BlobField field, byte[] value) {
                 set(field, value);
             }
         }, value);
@@ -136,98 +127,4 @@ public class MongoCreateBuilder implements CreateBuilder {
         return new MongoCreateSqlRequest(mongoDatabase.getCollection(sqlService.getTableName(globType)), fieldsValues, sqlService, true);
     }
 
-    private static class MongoCreateSqlRequest implements BulkDbRequest {
-        private MongoCollection<Document> collection;
-        private Map<Field, Accessor> fieldsValues;
-        private MongoDbService sqlService;
-        private boolean bulk;
-        private List<Document> docs;
-        CompletableFuture<Boolean> completableFuture;
-        private int count = 0;
-
-        public MongoCreateSqlRequest(MongoCollection<Document> collection,
-                                     Map<Field, Accessor> fieldsValues, MongoDbService sqlService, boolean bulk) {
-            this.collection = collection;
-            this.fieldsValues = fieldsValues;
-            this.sqlService = sqlService;
-            this.bulk = bulk;
-        }
-
-        public void run() throws SqlException {
-            Document doc = new Document();
-            for (Map.Entry<Field, Accessor> fieldAccessorEntry : fieldsValues.entrySet()) {
-                Object objectValue = fieldAccessorEntry.getValue().getObjectValue();
-                if (objectValue != null) {
-                    if (fieldAccessorEntry.getKey().hasAnnotation(DbRef.KEY)) {
-                        Document document = new Document();
-                        document.append(MongoUtils.DB_REF_ID_EXT, new ObjectId((String) objectValue));
-                        doc.append(MongoUtils.getDbName(fieldAccessorEntry.getKey()), document);
-                    } else {
-                        doc.append(MongoUtils.getFullDbName(fieldAccessorEntry.getKey()), objectValue);
-                    }
-                }
-            }
-
-            if (++count <= 2 || !bulk) {
-                collection.insertOne(doc);
-            } else {
-                if (docs == null) {
-                    docs = new ArrayList<>(100);
-                }
-                docs.add(doc);
-                if (docs.size() == 100) {
-                    if (completableFuture != null) {
-                        if (completableFuture.isCompletedExceptionally()) {
-                            try {
-                                completableFuture.get();
-                            } catch (Exception e) {
-                                throw new RuntimeException("Create failed ", e);
-                            }
-                        }
-                        final List<Document> toInsert = docs;
-                        docs = null;
-                        completableFuture = completableFuture.
-                              thenApply(ok -> {
-                                  collection.insertMany(toInsert);
-                                  return true;
-                              });
-                    } else {
-                        final List<Document> toInsert = docs;
-                        docs = null;
-                        completableFuture = CompletableFuture.supplyAsync(() -> {
-                            collection.insertMany(toInsert);
-                            return Boolean.TRUE;
-                        }, sqlService.getExecutor());
-                    }
-                }
-            }
-        }
-
-        public void close() {
-            if (completableFuture != null) {
-                if (docs != null && !docs.isEmpty()) {
-                    completableFuture = completableFuture.thenApply(ok -> {
-                        collection.insertMany(docs);
-                        return true;
-                    });
-                }
-                try {
-                    completableFuture.get(1, TimeUnit.MINUTES);
-                    completableFuture = null;
-                } catch (Exception e) {
-                    completableFuture = null;
-                    throw new RuntimeException("In close, fail to insert all data", e);
-                }
-            }
-            else {
-                if (docs != null && !docs.isEmpty()) {
-                    collection.insertMany(docs);
-                }
-            }
-        }
-
-        public void flush() {
-            close();
-        }
-    }
 }
