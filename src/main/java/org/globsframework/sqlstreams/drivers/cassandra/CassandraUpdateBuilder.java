@@ -4,9 +4,11 @@ import com.datastax.driver.core.Session;
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
 import org.globsframework.metamodel.fields.*;
+import org.globsframework.sqlstreams.BulkDbRequest;
 import org.globsframework.sqlstreams.SqlRequest;
 import org.globsframework.sqlstreams.UpdateBuilder;
 import org.globsframework.sqlstreams.constraints.Constraint;
+import org.globsframework.sqlstreams.exceptions.SqlException;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.streams.accessors.utils.*;
 
@@ -123,5 +125,21 @@ public class CassandraUpdateBuilder implements UpdateBuilder {
         } finally {
             values.clear();
         }
+    }
+
+    public BulkDbRequest getBulkRequest() {
+        SqlRequest request = getRequest();
+        return new BulkDbRequest() {
+            public void flush() {
+            }
+
+            public void run() throws SqlException {
+                request.run();
+            }
+
+            public void close() {
+                request.close();
+            }
+        };
     }
 }
