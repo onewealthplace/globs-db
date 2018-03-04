@@ -10,7 +10,6 @@ import org.bson.conversions.Bson;
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
 import org.globsframework.sqlstreams.BulkDbRequest;
-import org.globsframework.sqlstreams.SqlRequest;
 import org.globsframework.sqlstreams.annotations.IsDbKey;
 import org.globsframework.sqlstreams.constraints.Constraint;
 import org.globsframework.sqlstreams.exceptions.SqlException;
@@ -23,26 +22,26 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.Future;
 
-class MongoUpdateSqlRequest implements BulkDbRequest {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoUpdateSqlRequest.class);
+class MongoUpdateSqlRequestParallele implements BulkDbRequest {
     public static final int BATCH_SIZE = Integer.getInteger("mongo.update.batch.size", 500);
-    public static final int MAX_PENDING = Integer.getInteger("mongo.update.pending.max", 10);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoUpdateSqlRequestParallele.class);
     private final MongoCollection<Document> collection;
     private MongoDbService sqlService;
     private final Constraint constraint;
     private final Pair<MongoDbService.UpdateAdapter, Accessor> fieldsValues[];
     private boolean bulk;
     private List<UpdateOneModel<Document>> docs;
-    CompletableFuture<Boolean> completableFuture;
     private int count = 0;
-    ThreadUtils.Limiter limiter = ThreadUtils.createLimiter(MAX_PENDING);
     private UpdateOptions upsert;
+    private CompletionService<Boolean> completionService;
+    ThreadUtils.Limiter limiter = ThreadUtils.createLimiter(10);
 
-    public MongoUpdateSqlRequest(MongoDbService sqlService, MongoDatabase mongoDatabase, GlobType globType, Constraint constraint,
-                                 Map<Field, Accessor> fieldsValues, boolean bulk) {
+    public MongoUpdateSqlRequestParallele(MongoDbService sqlService, MongoDatabase mongoDatabase, GlobType globType, Constraint constraint,
+                                          Map<Field, Accessor> fieldsValues, boolean bulk) {
         this.sqlService = sqlService;
         this.constraint = constraint;
         this.bulk = bulk;
@@ -52,6 +51,7 @@ class MongoUpdateSqlRequest implements BulkDbRequest {
                 .toArray(Pair[]::new);
         collection = mongoDatabase.getCollection(sqlService.getTableName(globType));
         upsert = new UpdateOptions().upsert(true);
+        completionService = new ExecutorCompletionService<>(sqlService.getExecutor());
     }
 
     public void run() throws SqlException {
@@ -83,37 +83,16 @@ class MongoUpdateSqlRequest implements BulkDbRequest {
             docs.add(updateOneModel);
             if (docs.size() == BATCH_SIZE) {
                 limiter.limitParallelConnection();
-                if (completableFuture != null) {
-                    if (completableFuture.isCompletedExceptionally()) {
-                        try {
-                            completableFuture.get();
-                        } catch (Exception e) {
-                            throw new RuntimeException("Create failed ", e);
-                        }
+                final List<UpdateOneModel<Document>> toInsert = docs;
+                docs = null;
+                completionService.submit(() -> {
+                    try {
+                        collection.bulkWrite(toInsert);
+                    } finally {
+                        limiter.notifyDown();
                     }
-                    final List<UpdateOneModel<Document>> toInsert = docs;
-                    docs = null;
-                    completableFuture = completableFuture.
-                            thenApplyAsync(ok -> {
-                                try {
-                                    collection.bulkWrite(toInsert);
-                                } finally {
-                                    limiter.notifyDown();
-                                }
-                                return true;
-                            }, sqlService.getExecutor());
-                } else {
-                    final List<UpdateOneModel<Document>> toInsert = docs;
-                    docs = null;
-                    completableFuture = CompletableFuture.supplyAsync(() -> {
-                        try {
-                            collection.bulkWrite(toInsert);
-                        } finally {
-                            limiter.notifyDown();
-                        }
-                        return Boolean.TRUE;
-                    }, sqlService.getExecutor());
-                }
+                    return true;
+                });
             }
         }
     }
@@ -124,30 +103,30 @@ class MongoUpdateSqlRequest implements BulkDbRequest {
     }
 
     private void flushAll() {
-        if (completableFuture != null) {
-            if (docs != null && !docs.isEmpty()) {
-                completableFuture = completableFuture.thenApply(ok -> {
-                    collection.bulkWrite(docs);
-                    return true;
-                });
-            }
-            try {
-                completableFuture.get(1, TimeUnit.MINUTES);
-                completableFuture = null;
-            } catch (Exception e) {
-                completableFuture = null;
-                throw new RuntimeException("In close, fail to insert all data", e);
-            }
-        }
-        else {
-            if (docs != null && !docs.isEmpty()) {
-                collection.bulkWrite(docs);
-            }
+        if (docs != null && !docs.isEmpty()) {
+            collection.bulkWrite(docs);
         }
         docs = null;
+        limiter.waitAllDone();
+        readAllComplete();
     }
 
     public void flush() {
         flushAll();
+    }
+
+    private void readAllComplete() {
+        try {
+            while (true) {
+                Future<Boolean> poll = completionService.poll();
+                if (poll != null) {
+                    poll.get();
+                } else {
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
