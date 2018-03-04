@@ -6,6 +6,7 @@ import org.globsframework.metamodel.Field;
 import org.globsframework.sqlstreams.BulkDbRequest;
 import org.globsframework.sqlstreams.exceptions.SqlException;
 import org.globsframework.streams.accessors.Accessor;
+import org.globsframework.utils.ThreadUtils;
 import org.globsframework.utils.collections.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,12 +19,15 @@ import java.util.concurrent.TimeUnit;
 
 class MongoCreateSqlRequest implements BulkDbRequest {
     private static Logger LOGGER = LoggerFactory.getLogger(MongoCreateSqlRequest.class);
+    public static final int BATCH_SIZE = Integer.getInteger("mongo.create.batch.size", 500);
+    public static final int MAX_PENDING = Integer.getInteger("mongo.create.pending.max", 10);
     private MongoCollection<Document> collection;
     private final Pair<MongoDbService.UpdateAdapter, Accessor> fieldsValues[];
     private MongoDbService sqlService;
     private boolean bulk;
     private List<Document> docs;
     CompletableFuture<Boolean> completableFuture;
+    ThreadUtils.Limiter limiter = ThreadUtils.createLimiter(MAX_PENDING);
     private int count = 0;
 
     public MongoCreateSqlRequest(MongoCollection<Document> collection,
@@ -51,10 +55,11 @@ class MongoCreateSqlRequest implements BulkDbRequest {
             collection.insertOne(doc);
         } else {
             if (docs == null) {
-                docs = new ArrayList<>(100);
+                docs = new ArrayList<>(BATCH_SIZE);
             }
             docs.add(doc);
-            if (docs.size() == 100) {
+            if (docs.size() == BATCH_SIZE) {
+                limiter.limitParallelConnection();
                 if (completableFuture != null) {
                     if (completableFuture.isCompletedExceptionally()) {
                         try {
@@ -67,14 +72,22 @@ class MongoCreateSqlRequest implements BulkDbRequest {
                     docs = null;
                     completableFuture = completableFuture.
                           thenApplyAsync(ok -> {
-                              collection.insertMany(toInsert);
+                              try {
+                                  collection.insertMany(toInsert);
+                              } finally {
+                                  limiter.notifyDown();
+                              }
                               return true;
                           }, sqlService.getExecutor());
                 } else {
                     final List<Document> toInsert = docs;
                     docs = null;
                     completableFuture = CompletableFuture.supplyAsync(() -> {
-                        collection.insertMany(toInsert);
+                        try {
+                            collection.insertMany(toInsert);
+                        } finally {
+                            limiter.notifyDown();
+                        }
                         return Boolean.TRUE;
                     }, sqlService.getExecutor());
                 }
