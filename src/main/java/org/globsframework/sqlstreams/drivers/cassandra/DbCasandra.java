@@ -14,6 +14,12 @@ public class DbCasandra implements SqlService{
     private String keySpace;
     private Session session;
 
+    public DbCasandra(String host, int port, String keySpace) {
+        cluster = Cluster.builder().withPort(port).addContactPoint(host).build();
+        session = cluster.connect();
+        this.keySpace = keySpace;
+    }
+
     public DbCasandra(String host, String keySpace) {
         cluster = Cluster.builder().addContactPoint(host).build();
         session = cluster.connect();
@@ -33,6 +39,14 @@ public class DbCasandra implements SqlService{
     }
 
     public String getColumnName(Field field) {
+        String nativeName = getNativeName(field);
+        if (nativeName.startsWith("_")){
+            nativeName = nativeName.substring(1, nativeName.length());
+        }
+        return nativeName;
+    }
+
+    private String getNativeName(Field field) {
         Glob name = field.findAnnotation(DbFieldName.KEY);
         if (name != null) {
             return name.get(DbFieldName.NAME);

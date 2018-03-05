@@ -14,17 +14,21 @@ import org.globsframework.sqlstreams.utils.PrettyWriter;
 import org.globsframework.sqlstreams.utils.StringPrettyWriter;
 import org.globsframework.streams.accessors.Accessor;
 import org.globsframework.utils.collections.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
 
 public class CassandraCreateRequest implements SqlRequest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraUpdateRequest.class);
     private final Session session;
     private PreparedStatement preparedStatement;
     private List<Pair<Field, Accessor>> fields;
     private GeneratedKeyAccessor generatedKeyAccessor;
     private GlobType globType;
     private DbCasandra sqlService;
+    int count = 0;
 
     public CassandraCreateRequest(List<Pair<Field, Accessor>> fields, GeneratedKeyAccessor generatedKeyAccessor,
                                   Session session,
@@ -39,6 +43,7 @@ public class CassandraCreateRequest implements SqlRequest {
             }
         });
         this.session = session;
+        LOGGER.info("update request : " + sql);
         preparedStatement = session.prepare(sql);
     }
 
@@ -70,6 +75,7 @@ public class CassandraCreateRequest implements SqlRequest {
     }
 
     public void run() {
+        count++;
         int index = 0;
         BoundStatement boundStatement = preparedStatement.bind();
         CassandraValueFieldVisitor sqlValueVisitor = new CassandraValueFieldVisitor(boundStatement);
@@ -82,7 +88,9 @@ public class CassandraCreateRequest implements SqlRequest {
     }
 
     public void close() {
+        LOGGER.info(count + " create done.");
     }
+
 
     private String getDebugRequest() {
         return prepareRequest(fields, globType, new DebugValue());

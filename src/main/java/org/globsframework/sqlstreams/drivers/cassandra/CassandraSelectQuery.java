@@ -19,11 +19,14 @@ import org.globsframework.streams.GlobStream;
 import org.globsframework.utils.exceptions.ItemNotFound;
 import org.globsframework.utils.exceptions.TooManyItems;
 import org.globsframework.utils.exceptions.UnexpectedApplicationState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.stream.Stream;
 
 public class CassandraSelectQuery implements SelectQuery {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraSelectQuery.class);
     private final Session session;
     private Set<GlobType> globTypes = new HashSet<GlobType>();
     private Constraint constraint;
@@ -59,6 +62,7 @@ public class CassandraSelectQuery implements SelectQuery {
         this.distinct = distinct;
         sql = prepareSqlRequest();
         this.session = session;
+        LOGGER.info("call " + sql);
         preparedStatement = session.prepare(sql);
     }
 

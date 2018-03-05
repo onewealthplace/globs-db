@@ -9,16 +9,20 @@ import org.globsframework.sqlstreams.*;
 import org.globsframework.sqlstreams.constraints.Constraint;
 import org.globsframework.sqlstreams.drivers.cassandra.impl.CassandraFieldCreationVisitor;
 import org.globsframework.sqlstreams.drivers.jdbc.impl.SqlFieldCreationVisitor;
+import org.globsframework.sqlstreams.drivers.mongodb.MongoSelectBuilder;
 import org.globsframework.sqlstreams.exceptions.DbConstraintViolation;
 import org.globsframework.sqlstreams.exceptions.RollbackFailed;
 import org.globsframework.sqlstreams.utils.StringPrettyWriter;
 import org.globsframework.utils.exceptions.UnexpectedApplicationState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Arrays;
 
 public class CassandraConnection implements SqlConnection {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraConnection.class);
     private Session session;
     private DbCasandra sqlService;
 
@@ -88,7 +92,9 @@ public class CassandraConnection implements SqlConnection {
             writer.append(") ");
         }
         writer.append(");");
-        session.execute(writer.toString());
+        String query = writer.toString();
+        LOGGER.info("create " + query);
+        session.execute(query);
     }
 
     public void emptyTable(GlobType... globType) {

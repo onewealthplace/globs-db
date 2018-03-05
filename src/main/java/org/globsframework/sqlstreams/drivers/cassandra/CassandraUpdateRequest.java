@@ -14,10 +14,13 @@ import org.globsframework.sqlstreams.drivers.cassandra.impl.WhereClauseConstrain
 import org.globsframework.sqlstreams.utils.StringPrettyWriter;
 import org.globsframework.streams.accessors.Accessor;
 import org.globsframework.utils.exceptions.UnexpectedApplicationState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 public class CassandraUpdateRequest implements SqlRequest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraUpdateRequest.class);
     private GlobType globType;
     private Constraint constraint;
     private Map<Field, Accessor> values;
@@ -25,6 +28,7 @@ public class CassandraUpdateRequest implements SqlRequest {
     private DbCasandra sqlService;
     private com.datastax.driver.core.PreparedStatement preparedStatement;
     private String sqlRequest;
+    private int count;
 
     public CassandraUpdateRequest(GlobType globType, Constraint constraint, Map<Field, Accessor> values,
                                   Session session, DbCasandra sqlService) {
@@ -34,10 +38,12 @@ public class CassandraUpdateRequest implements SqlRequest {
         this.session = session;
         this.sqlService = sqlService;
         sqlRequest = createRequest();
+        LOGGER.info("update request : " + sqlRequest);
         preparedStatement = session.prepare(sqlRequest);
     }
 
     public void run() {
+        count++;
         BoundStatement boundStatement = preparedStatement.bind();
         CassandraValueFieldVisitor cassandraValueFieldVisitor = new CassandraValueFieldVisitor(boundStatement);
         int index = 0;
@@ -50,6 +56,7 @@ public class CassandraUpdateRequest implements SqlRequest {
     }
 
     public void close() {
+        LOGGER.info(count + " update done");
     }
 
     public void execute(Key key) {
