@@ -117,7 +117,7 @@ public class CassandraSelectQuery implements SelectQuery {
             prettyWriter.removeLast().removeLast();
         }
         prettyWriter.append(" LIMIT " + (top == -1 ? Integer.MAX_VALUE : top));
-        prettyWriter.append(" ALLOW FILTERING ");
+//        prettyWriter.append(" ALLOW FILTERING ");
         prettyWriter.append(";");
         return prettyWriter.toString();
     }
