@@ -225,7 +225,7 @@ public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
         GlobType currentType = this.currentType;
         JsonObject field = object.getAsJsonObject(FIELD);
         JsonElement type = field.get(TYPE);
-        if (type != null) {
+        if (type != null && (currentType == null || !type.getAsString().equals(currentType.getName()))) {
             currentType = resolver.get(type.getAsString());
         }
         JsonElement name = field.get(FIELD_NAME);
