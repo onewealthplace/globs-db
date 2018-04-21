@@ -16,6 +16,8 @@ public interface SqlConnection {
 
     CreateBuilder getCreateBuilder(GlobType globType);
 
+    SelectBuilder getQueryBuilder(GlobType globType, String sqlRequest);
+
     UpdateBuilder getUpdateBuilder(GlobType globType, Constraint constraint);
 
     SqlRequest getDeleteRequest(GlobType globType);

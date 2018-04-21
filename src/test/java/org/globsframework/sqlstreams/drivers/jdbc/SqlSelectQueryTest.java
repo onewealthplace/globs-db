@@ -1,10 +1,18 @@
 package org.globsframework.sqlstreams.drivers.jdbc;
 
 import org.globsframework.metamodel.GlobModel;
+import org.globsframework.metamodel.GlobType;
+import org.globsframework.metamodel.GlobTypeLoaderFactory;
+import org.globsframework.metamodel.annotations.FieldNameAnnotation;
+import org.globsframework.metamodel.fields.DoubleField;
+import org.globsframework.metamodel.fields.IntegerField;
+import org.globsframework.metamodel.fields.StringField;
 import org.globsframework.model.Glob;
 import org.globsframework.model.GlobList;
 import org.globsframework.model.DummyObject;
 import org.globsframework.model.DummyObject2;
+import org.globsframework.model.format.GlobPrinter;
+import org.globsframework.sqlstreams.SelectBuilder;
 import org.globsframework.sqlstreams.SelectQuery;
 import org.globsframework.sqlstreams.SqlConnection;
 import org.globsframework.sqlstreams.constraints.Constraint;
@@ -23,7 +31,6 @@ import org.junit.Test;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Arrays;
 import java.util.Collections;
 
 import static org.globsframework.sqlstreams.constraints.Constraints.and;
@@ -282,5 +289,49 @@ public class SqlSelectQueryTest extends DbServicesTestCase {
         return sqlConnection.getQueryBuilder(DummyObject.TYPE, constraint)
               .withKeys()
               .getQuery().executeUnique();
+    }
+
+
+    static public class InnerRequest {
+        public static GlobType TYPE;
+
+        public static IntegerField ID;
+
+        public static DoubleField VALUE;
+
+        @FieldNameAnnotation("TYPE")
+        public static StringField TYPE_TMP;
+
+        static {
+            GlobTypeLoaderFactory.create(InnerRequest.class).load();
+        }
+    }
+
+    @Test
+    public void withManualRequest() {
+        populate(sqlConnection,
+                XmlGlobStreamReader.parse(
+                        "<dummyObject id='1' name='hello' value='1.1' present='true'/>" +
+                                "<dummyObject id='3' name='world' value='2.2' present='false'/>" +
+                                "<dummyObject id='4' name='world' value='2.2' present='false'/>" +
+                                "<dummyObject id='5' name='world' value='3.2' present='false'/>" +
+                                "<dummyObject id='6' name='world' value='4.2' present='false'/>" +
+                                "<dummyObject id='7' name='world' value='2.2' present='false'/>", directory.get(GlobModel.class)));
+        SelectBuilder queryBuilder = sqlConnection.getQueryBuilder(InnerRequest.TYPE,
+                "SELECT ID, VALUE, CASE WHEN VALUE > 3  THEN 'CASH_IN' ELSE 'CASH_OUT' END as type from " + sqlService.getTableName(DummyObject.TYPE));
+        GlobList list = queryBuilder
+                .selectAll()
+                .getQuery()
+                .executeAsGlobs();
+        String s = GlobPrinter.init(list).toString();
+        Assert.assertEquals(s, "===== innerRequest ======\n" +
+                "| id | value | TYPE     |\n" +
+                "| 1  | 1.1   | CASH_OUT |\n" +
+                "| 3  | 2.2   | CASH_OUT |\n" +
+                "| 4  | 2.2   | CASH_OUT |\n" +
+                "| 5  | 3.2   | CASH_IN  |\n" +
+                "| 6  | 4.2   | CASH_IN  |\n" +
+                "| 7  | 2.2   | CASH_OUT |\n" +
+                "\n");
     }
 }

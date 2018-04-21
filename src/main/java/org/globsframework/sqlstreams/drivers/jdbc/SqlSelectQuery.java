@@ -16,14 +16,18 @@ import org.globsframework.streams.GlobStream;
 import org.globsframework.utils.exceptions.ItemNotFound;
 import org.globsframework.utils.exceptions.TooManyItems;
 import org.globsframework.utils.exceptions.UnexpectedApplicationState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Stream;
 
 public class SqlSelectQuery implements SelectQuery {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqlSelectQuery.class);
     private Set<GlobType> globTypes = new HashSet<GlobType>();
     private Constraint constraint;
     private BlobUpdater blobUpdater;
@@ -38,7 +42,8 @@ public class SqlSelectQuery implements SelectQuery {
 
     public SqlSelectQuery(Connection connection, Constraint constraint,
                           Map<Field, SqlAccessor> fieldToAccessorHolder, SqlService sqlService,
-                          BlobUpdater blobUpdater, boolean autoClose, List<SqlQueryBuilder.Order> orders, int top, Set<Field> distinct) {
+                          BlobUpdater blobUpdater, boolean autoClose, List<SqlQueryBuilder.Order> orders, int top, Set<Field> distinct,
+                          String externalRequest) {
         this.constraint = constraint;
         this.blobUpdater = blobUpdater;
         this.autoClose = autoClose;
@@ -47,12 +52,47 @@ public class SqlSelectQuery implements SelectQuery {
         this.orders = orders;
         this.top = top;
         this.distinct = distinct;
-        sql = prepareSqlRequest();
+        if (externalRequest == null) {
+            sql = prepareSqlRequest();
+        }
+        else {
+            sql = externalRequest;
+        }
         try {
-            preparedStatement = connection.prepareStatement(sql);
+            this.preparedStatement = connection.prepareStatement(sql);
         } catch (SQLException e) {
             throw new UnexpectedApplicationState("for request " + sql, e);
         }
+        if (externalRequest != null) {
+            initIndexFromMetadata(fieldToAccessorHolder, sqlService);
+        }
+    }
+
+    private void initIndexFromMetadata(Map<Field, SqlAccessor> fieldToAccessorHolder, SqlService sqlService) {
+        try {
+            ResultSetMetaData metaData = preparedStatement.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            for (int i = 1; i <= columnCount; i++) {
+                String columnName = metaData.getColumnName(i);
+                if (!updateSqlIndex(fieldToAccessorHolder, sqlService, i, columnName)) {
+                    LOGGER.warn("column " + columnName + " not found in type got " + fieldToAccessorHolder.keySet());
+                }
+            }
+        } catch (SQLException e) {
+            String msg = "Fail to analyse metadata of " + sql;
+            LOGGER.error(msg, e);
+            throw new RuntimeException(msg, e);
+        }
+    }
+
+    private boolean updateSqlIndex(Map<Field, SqlAccessor> fieldToAccessorHolder, SqlService sqlService, int i, String columnName) {
+        for (Map.Entry<Field, SqlAccessor> fieldSqlAccessorEntry : fieldToAccessorHolder.entrySet()) {
+            if (sqlService.getColumnName(fieldSqlAccessorEntry.getKey()).equals(columnName)) {
+                fieldSqlAccessorEntry.getValue().setIndex(i);
+                return true;
+            }
+        }
+        return false;
     }
 
     private String prepareSqlRequest() {
