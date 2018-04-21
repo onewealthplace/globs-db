@@ -31,6 +31,10 @@ public class CassandraConnection implements SqlConnection {
         return null;
     }
 
+    public SelectBuilder getQueryBuilder(GlobType globType, String sqlRequest) {
+        throw new RuntimeException("Not Implemented");
+    }
+
     public UpdateBuilder getUpdateBuilder(GlobType globType, Constraint constraint) {
         return null;
     }

@@ -16,6 +16,7 @@ import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.Ref;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.*;
 
 public class SqlQueryBuilder implements SelectBuilder {
@@ -24,6 +25,7 @@ public class SqlQueryBuilder implements SelectBuilder {
     private Constraint constraint;
     private SqlService sqlService;
     private BlobUpdater blobUpdater;
+    private String sqlRequest;
     private boolean autoClose = true;
     private Map<Field, SqlAccessor> fieldToAccessorHolder = new HashMap<Field, SqlAccessor>();
     private final List<Order> orders = new ArrayList<>();
@@ -48,9 +50,20 @@ public class SqlQueryBuilder implements SelectBuilder {
         this.blobUpdater = blobUpdater;
     }
 
+    public SqlQueryBuilder(Connection connection, GlobType globType, Constraint constraint, SqlService sqlService, BlobUpdater blobUpdater,
+                           String sqlRequest) {
+        this.connection = connection;
+        this.globType = globType;
+        this.constraint = constraint;
+        this.sqlService = sqlService;
+        this.blobUpdater = blobUpdater;
+        this.sqlRequest = sqlRequest;
+    }
+
     public SelectQuery getQuery() {
         try {
-            return new SqlSelectQuery(connection, constraint, fieldToAccessorHolder, sqlService, blobUpdater, autoClose, orders, top, distinct);
+            return new SqlSelectQuery(connection, constraint, fieldToAccessorHolder, sqlService, blobUpdater, autoClose, orders, top, distinct,
+                    sqlRequest);
         } finally {
             fieldToAccessorHolder.clear();
         }

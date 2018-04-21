@@ -46,6 +46,10 @@ public class MongoDbConnection implements SqlConnection {
         return new MongoCreateBuilder(mongoDatabase, globType, sqlService);
     }
 
+    public SelectBuilder getQueryBuilder(GlobType globType, String sqlRequest) {
+        throw new RuntimeException("Not Implemented");
+    }
+
     public UpdateBuilder getUpdateBuilder(GlobType globType, Constraint constraint) {
         throw new RuntimeException("Not Implemented");
     }
