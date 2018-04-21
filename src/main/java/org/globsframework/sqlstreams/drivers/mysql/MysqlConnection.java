@@ -1,8 +1,5 @@
 package org.globsframework.sqlstreams.drivers.mysql;
 
-import org.globsframework.metamodel.annotations.MaxSizeType;
-import org.globsframework.metamodel.fields.StringField;
-import org.globsframework.model.Glob;
 import org.globsframework.sqlstreams.SqlService;
 import org.globsframework.sqlstreams.drivers.jdbc.BlobUpdater;
 import org.globsframework.sqlstreams.drivers.jdbc.JdbcConnection;

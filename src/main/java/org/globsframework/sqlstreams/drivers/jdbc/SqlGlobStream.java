@@ -10,8 +10,7 @@ import org.globsframework.utils.exceptions.UnexpectedApplicationState;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.LocalDate;
 import java.time.temporal.ChronoField;
 import java.util.Collection;
 import java.util.Date;
@@ -118,8 +117,8 @@ public class SqlGlobStream implements GlobStream {
                     return (Integer) number;
                 }
                 return number.intValue();
-            } else if (object instanceof Date) {
-                LocalDateTime ldt = LocalDateTime.ofInstant(((Date) object).toInstant(), ZoneId.systemDefault());
+            } else if (object instanceof java.sql.Date) {
+                LocalDate ldt = ((java.sql.Date) object).toLocalDate();
                 return Math.toIntExact(ldt.getLong(ChronoField.EPOCH_DAY));
             }
             throw new RuntimeException("Can not convert " + object);
