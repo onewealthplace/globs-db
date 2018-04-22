@@ -5,7 +5,7 @@ import org.globsframework.streams.accessors.Accessor;
 
 public abstract class SqlAccessor implements Accessor {
     private SqlGlobStream sqlMoStream;
-    private int index;
+    private int index = -1;
 
     public void setMoStream(SqlGlobStream sqlMoStream) {
         this.sqlMoStream = sqlMoStream;

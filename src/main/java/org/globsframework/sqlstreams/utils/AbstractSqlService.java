@@ -1,6 +1,5 @@
 package org.globsframework.sqlstreams.utils;
 
-import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
 import org.globsframework.sqlstreams.SqlService;
 import org.globsframework.sqlstreams.annotations.TargetTypeName;
@@ -9,7 +8,7 @@ import org.globsframework.utils.Strings;
 public abstract class AbstractSqlService implements SqlService {
 
     private static final String[] RESERVED_KEYWORDS = {
-          "COUNT", "WHERE", "FROM", "SELECT"
+            "COUNT", "WHERE", "FROM", "SELECT"
     };
 
 //    public String getTableName(GlobType globType) {

@@ -2,7 +2,9 @@ package org.globsframework.sqlstreams.drivers.jdbc;
 
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
+import org.globsframework.model.Glob;
 import org.globsframework.sqlstreams.SqlConnection;
+import org.globsframework.sqlstreams.annotations.DbFieldName;
 import org.globsframework.sqlstreams.drivers.hsqldb.HsqlConnection;
 import org.globsframework.sqlstreams.drivers.mysql.MysqlConnection;
 import org.globsframework.sqlstreams.utils.AbstractSqlService;
@@ -34,15 +36,7 @@ public class JdbcSqlService extends AbstractSqlService {
     }
 
     public JdbcSqlService(String dbName, String user, String password) {
-        this(dbName, user, password, new NamingMapping() {
-            public String getTableName(GlobType globType) {
-                return AbstractSqlService.toSqlName(globType.getName());
-            }
-
-            public String getColumnName(Field field) {
-                return AbstractSqlService.toSqlName(field.getName());
-            }
-        });
+        this(dbName, user, password, new DefaultNamingMapping());
     }
 
     public interface NamingMapping {
@@ -112,6 +106,20 @@ public class JdbcSqlService extends AbstractSqlService {
             return driver.connect(dbName, dbInfo);
         } catch (SQLException e) {
             throw new UnexpectedApplicationState("for " + dbInfo.get("user") + " on " + dbName, e);
+        }
+    }
+
+    private static class DefaultNamingMapping implements NamingMapping {
+        public String getTableName(GlobType globType) {
+            return AbstractSqlService.toSqlName(globType.getName());
+        }
+
+        public String getColumnName(Field field) {
+            Glob name = field.findAnnotation(DbFieldName.KEY);
+            if (name != null) {
+                return name.get(DbFieldName.NAME);
+            }
+            return AbstractSqlService.toSqlName(field.getName());
         }
     }
 }
