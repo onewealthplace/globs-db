@@ -33,10 +33,11 @@ public class SqlGlobStream implements GlobStream {
 
     public boolean next() {
         try {
-            rowId++;
             boolean hasNext = resultSet.next();
             if (!hasNext) {
                 close();
+            } else {
+                rowId++;
             }
             return hasNext;
         } catch (SQLException e) {
