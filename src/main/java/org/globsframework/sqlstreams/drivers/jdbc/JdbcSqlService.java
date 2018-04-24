@@ -92,6 +92,9 @@ public class JdbcSqlService extends AbstractSqlService {
                     }
                 };
             }
+            else {
+                throw new RuntimeException(dbName + " not valid");
+            }
         } catch (Exception e) {
             throw new ItemNotFound(e);
         }
