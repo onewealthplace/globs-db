@@ -60,8 +60,12 @@ public class SqlSelectQuery implements SelectQuery {
             sql = externalRequest;
         }
         try {
-            this.preparedStatement = connection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY,
-                    ResultSet.CONCUR_READ_ONLY);
+            this.preparedStatement = connection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+            // ack => force mysql driver to not load all data
+            if (preparedStatement instanceof com.mysql.jdbc.PreparedStatement) {
+                ((com.mysql.jdbc.PreparedStatement) preparedStatement).enableStreamingResults();
+            }
+
         } catch (SQLException e) {
             throw new UnexpectedApplicationState("for request " + sql, e);
         }

@@ -14,7 +14,7 @@ public class DummyObject {
     public static GlobType TYPE;
 
     @KeyField
-    @AutoIncrement
+//    @AutoIncrement
     public static IntegerField ID;
 
     @NamingField
