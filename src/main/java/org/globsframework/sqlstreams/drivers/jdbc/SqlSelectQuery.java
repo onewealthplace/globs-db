@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.*;
@@ -59,7 +60,8 @@ public class SqlSelectQuery implements SelectQuery {
             sql = externalRequest;
         }
         try {
-            this.preparedStatement = connection.prepareStatement(sql);
+            this.preparedStatement = connection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY,
+                    ResultSet.CONCUR_READ_ONLY);
         } catch (SQLException e) {
             throw new UnexpectedApplicationState("for request " + sql, e);
         }
