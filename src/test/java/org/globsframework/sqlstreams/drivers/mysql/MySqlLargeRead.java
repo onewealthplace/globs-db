@@ -16,7 +16,7 @@ public class MySqlLargeRead {
 
         SqlConnection db = jdbcSqlService.getDb();
 
-        SelectQuery query = db.getQueryBuilder(DummyObject.TYPE).selectAll().getQuery();
+        SelectQuery query = db.getQueryBuilder(DummyObject.TYPE, "select * from DUMMY_OBJECT").selectAll().getQuery();
         GlobStream execute = query.execute();
         long count = 0;
         while (execute.next()) {
