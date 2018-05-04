@@ -19,11 +19,7 @@ import org.globsframework.utils.exceptions.UnexpectedApplicationState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -40,6 +36,7 @@ public class SqlSelectQuery implements SelectQuery {
     private Set<Field> distinct;
     private PreparedStatement preparedStatement;
     private String sql;
+    private boolean shouldInitAccessorWithMetadata;
 
     public SqlSelectQuery(Connection connection, Constraint constraint,
                           Map<Field, SqlAccessor> fieldToAccessorHolder, SqlService sqlService,
@@ -55,8 +52,7 @@ public class SqlSelectQuery implements SelectQuery {
         this.distinct = distinct;
         if (externalRequest == null) {
             sql = prepareSqlRequest();
-        }
-        else {
+        } else {
             sql = externalRequest;
         }
         try {
@@ -65,18 +61,14 @@ public class SqlSelectQuery implements SelectQuery {
             if (preparedStatement instanceof com.mysql.jdbc.PreparedStatement) {
                 ((com.mysql.jdbc.PreparedStatement) preparedStatement).enableStreamingResults();
             }
-
         } catch (SQLException e) {
             throw new UnexpectedApplicationState("for request " + sql, e);
         }
-        if (externalRequest != null) {
-            initIndexFromMetadata(fieldToAccessorHolder, sqlService);
-        }
+        shouldInitAccessorWithMetadata = externalRequest != null;
     }
 
-    private void initIndexFromMetadata(Map<Field, SqlAccessor> fieldToAccessorHolder, SqlService sqlService) {
+    private void initIndexFromMetadata(ResultSetMetaData metaData, Map<Field, SqlAccessor> fieldToAccessorHolder, SqlService sqlService) {
         try {
-            ResultSetMetaData metaData = preparedStatement.getMetaData();
             int columnCount = metaData.getColumnCount();
             for (int i = 1; i <= columnCount; i++) {
                 String columnName = metaData.getColumnName(i);
@@ -116,9 +108,9 @@ public class SqlSelectQuery implements SelectQuery {
                 prettyWriter.append(" DISTINCT ");
             }
             prettyWriter.append(tableName)
-                  .append(".")
-                  .append(sqlService.getColumnName(fieldAndAccessor.getKey()))
-                  .appendIf(", ", iterator.hasNext());
+                    .append(".")
+                    .append(sqlService.getColumnName(fieldAndAccessor.getKey()))
+                    .appendIf(", ", iterator.hasNext());
         }
         StringPrettyWriter where = null;
         if (constraint != null) {
@@ -131,7 +123,7 @@ public class SqlSelectQuery implements SelectQuery {
         for (Iterator it = globTypes.iterator(); it.hasNext(); ) {
             GlobType globType = (GlobType) it.next();
             prettyWriter.append(sqlService.getTableName(globType))
-                  .appendIf(", ", it.hasNext());
+                    .appendIf(", ", it.hasNext());
         }
         if (where != null) {
             prettyWriter.append(where.toString());
@@ -143,8 +135,7 @@ public class SqlSelectQuery implements SelectQuery {
                 prettyWriter.append(sqlService.getColumnName(order.field));
                 if (order.asc) {
                     prettyWriter.append(" ASC");
-                }
-                else {
+                } else {
                     prettyWriter.append(" DESC");
                 }
                 prettyWriter.append(", ");
@@ -169,7 +160,12 @@ public class SqlSelectQuery implements SelectQuery {
             if (constraint != null) {
                 constraint.visit(new ValueConstraintVisitor(preparedStatement, blobUpdater));
             }
-            return new SqlGlobStream(preparedStatement.executeQuery(), fieldToAccessorHolder, this);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (shouldInitAccessorWithMetadata) {
+                initIndexFromMetadata(resultSet.getMetaData(), fieldToAccessorHolder, sqlService);
+                shouldInitAccessorWithMetadata = false;
+            }
+            return new SqlGlobStream(resultSet, fieldToAccessorHolder, this);
         } catch (SQLException e) {
             throw new UnexpectedApplicationState("for request : " + sql, e);
         }
