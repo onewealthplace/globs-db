@@ -11,7 +11,7 @@ import jetbrains.buildServer.configs.kotlin.v2017_2.projectFeatures.versionedSet
 object Project : Project({
     uuid = "56c0822b-8153-4f41-9c56-80cd1a638218"
     id = "OWP_GlobsDb"
-    parentId = "OWP"
+    parentId = "AW"
     name = "Globs DB"
 
     vcsRoot(OWP_GlobsDb_Repository_Dev)
