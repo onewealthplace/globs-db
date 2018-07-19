@@ -27,7 +27,7 @@ public class DoubleFromBigDecimalMongoAccessor implements DoubleAccessor {
         } else if (o instanceof Number) {
             return ((Number) o).doubleValue();
         } else {
-            throw new RuntimeException("Double type expected but got : " + o.getClass());
+            throw new RuntimeException("Double type expected but got : " + o.getClass() + " column " + columnName + " in document " + currentDoc.toString());
         }
     }
 

@@ -25,7 +25,7 @@ public class IntegerMongoAccessor implements IntegerAccessor {
         if (value instanceof Number) {
             return ((Number) value).intValue();
         }
-        throw new RuntimeException("Int type expected but got : " + value.getClass());
+        throw new RuntimeException("Int type expected but got : " + value.getClass() + " column " + columnName + " in document " + currentDoc.toString());
     }
 
     public int getValue(int valueIfNull) {
