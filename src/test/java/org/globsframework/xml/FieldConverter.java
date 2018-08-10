@@ -110,6 +110,11 @@ public class FieldConverter {
             value = stringValue.getBytes();
         }
 
+        @Override
+        public void visitArray(ArrayField field) throws Exception {
+
+        }
+
         public void visitString(StringField field) throws Exception {
             value = stringValue;
         }
@@ -158,6 +163,11 @@ public class FieldConverter {
 
         public void visitBlob(BlobField field) throws Exception {
             stringValue = new String((byte[])value);
+        }
+
+        @Override
+        public void visitArray(ArrayField field) throws Exception {
+
         }
 
         public void visitString(StringField field) throws Exception {

@@ -134,6 +134,11 @@ public class XmlGlobStreamReader {
                 accessor = new XmlBlobAccessor(stream, field);
             }
 
+            @Override
+            public void visitArray(ArrayField field) throws Exception {
+
+            }
+
             public void visitString(StringField field) throws Exception {
                 accessor = new XmlStringAccessor(stream, field);
             }
