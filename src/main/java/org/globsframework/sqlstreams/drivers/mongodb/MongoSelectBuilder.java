@@ -15,6 +15,7 @@ import org.globsframework.sqlstreams.constraints.Constraint;
 import org.globsframework.sqlstreams.drivers.mongodb.accessor.*;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.Ref;
+import org.globsframework.utils.exceptions.NotSupported;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +23,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 public class MongoSelectBuilder implements SelectBuilder {
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoSelectBuilder.class);
@@ -204,6 +204,11 @@ public class MongoSelectBuilder implements SelectBuilder {
 
         public void visitBlob(BlobField field, MongoSelectBuilder builder) throws Exception {
             accessor = builder.retrieve(field);
+        }
+
+        @Override
+        public void visitArray(ArrayField field, MongoSelectBuilder builder) throws Exception {
+            throw new NotSupported("TODO: remove") ;
         }
     }
 

@@ -11,12 +11,11 @@ import org.globsframework.sqlstreams.constraints.Constraint;
 import org.globsframework.sqlstreams.drivers.jdbc.BlobUpdater;
 import org.globsframework.sqlstreams.drivers.jdbc.SqlSelectQuery;
 import org.globsframework.sqlstreams.drivers.jdbc.impl.FieldToSqlAccessorVisitor;
-import org.globsframework.sqlstreams.drivers.mongodb.MongoSelectBuilder;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.Ref;
+import org.globsframework.utils.exceptions.NotSupported;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.util.*;
 
 public class SqlQueryBuilder implements SelectBuilder {
@@ -217,6 +216,10 @@ public class SqlQueryBuilder implements SelectBuilder {
 
         public void visitBlob(BlobField field) throws Exception {
             accessor = retrieve(field);
+        }
+
+        public void visitArray(ArrayField field) throws Exception {
+            throw new NotSupported("AccessorToFieldVisitor visitArray") ;
         }
 
         public void visitLong(LongField field) throws Exception {

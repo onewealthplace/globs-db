@@ -15,6 +15,7 @@ import org.globsframework.sqlstreams.exceptions.SqlException;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.streams.accessors.utils.*;
 import org.globsframework.utils.collections.Pair;
+import org.globsframework.utils.exceptions.NotSupported;
 
 import java.sql.Connection;
 import java.util.ArrayList;
@@ -73,6 +74,11 @@ public class SqlCreateBuilder implements CreateBuilder {
 
             public void visitBlob(BlobField field) {
                 setObject(field, new ValueBlobAccessor((byte[]) value));
+            }
+
+            @Override
+            public void visitArray(ArrayField field) throws Exception {
+                throw new NotSupported("TODO: remove") ;
             }
 
         });

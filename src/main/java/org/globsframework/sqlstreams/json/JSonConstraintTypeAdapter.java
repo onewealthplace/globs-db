@@ -6,9 +6,11 @@ import com.google.gson.stream.JsonWriter;
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
 import org.globsframework.metamodel.fields.*;
+import org.globsframework.model.Glob;
 import org.globsframework.sqlstreams.constraints.*;
 import org.globsframework.sqlstreams.constraints.impl.*;
 import org.globsframework.utils.Ref;
+import org.globsframework.utils.exceptions.NotSupported;
 
 import java.io.IOException;
 import java.util.*;
@@ -473,6 +475,11 @@ public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
                 jsonWriter.value(Base64.getEncoder().encodeToString(value));
             }
         }
+
+        @Override
+        public void visitArray(ArrayField field, List<Glob> value) {
+            throw new NotSupported("JSonConstraintVisitor: visitArray") ;
+        }
     }
 
     static class JsonFieldValueReaderVisitor implements FieldVisitorWithContext<JsonElement> {
@@ -501,6 +508,11 @@ public class JSonConstraintTypeAdapter extends TypeAdapter<Constraint> {
 
         public void visitBlob(BlobField field, JsonElement context) throws Exception {
             value = Base64.getDecoder().decode(context.getAsString());
+        }
+
+        @Override
+        public void visitArray(ArrayField field, JsonElement context) throws Exception {
+            throw new NotSupported("JsonFieldValueReaderVisitor: visitArray") ;
         }
     }
 }

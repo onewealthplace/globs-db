@@ -2,6 +2,7 @@ package org.globsframework.sqlstreams.drivers.jdbc.impl;
 
 import org.globsframework.metamodel.fields.*;
 import org.globsframework.sqlstreams.accessors.*;
+import org.globsframework.utils.exceptions.NotSupported;
 
 public class FieldToSqlAccessorVisitor implements FieldVisitor {
     private SqlAccessor accessor;
@@ -32,6 +33,11 @@ public class FieldToSqlAccessorVisitor implements FieldVisitor {
 
     public void visitBlob(BlobField field) throws Exception {
         accessor = new BlobSqlAccessor();
+    }
+
+    @Override
+    public void visitArray(ArrayField field) throws Exception {
+        throw new NotSupported("FieldToSqlAccessor.visitArray") ;
     }
 
 }

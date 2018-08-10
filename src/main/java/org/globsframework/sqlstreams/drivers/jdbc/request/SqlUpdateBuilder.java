@@ -11,6 +11,7 @@ import org.globsframework.sqlstreams.drivers.jdbc.BlobUpdater;
 import org.globsframework.sqlstreams.drivers.jdbc.SqlUpdateRequest;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.streams.accessors.utils.*;
+import org.globsframework.utils.exceptions.NotSupported;
 
 import java.sql.Connection;
 import java.util.HashMap;
@@ -57,6 +58,12 @@ public class SqlUpdateBuilder implements UpdateBuilder {
 
             public void visitBlob(BlobField field) throws Exception {
                 update(field, (byte[]) value);
+            }
+
+            @Override
+            public void visitArray(ArrayField field) throws Exception {
+                throw new NotSupported("UpdateBuilder visit Array") ;
+
             }
 
         });

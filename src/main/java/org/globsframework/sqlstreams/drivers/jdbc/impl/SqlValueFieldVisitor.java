@@ -2,6 +2,7 @@ package org.globsframework.sqlstreams.drivers.jdbc.impl;
 
 import org.globsframework.metamodel.fields.*;
 import org.globsframework.sqlstreams.drivers.jdbc.BlobUpdater;
+import org.globsframework.utils.exceptions.NotSupported;
 
 import java.sql.PreparedStatement;
 import java.sql.Types;
@@ -68,5 +69,10 @@ public class SqlValueFieldVisitor implements FieldVisitor {
         } else {
             blobUpdater.setBlob(preparedStatement, index, ((byte[]) value));
         }
+    }
+
+    @Override
+    public void visitArray(ArrayField field) throws Exception {
+        throw new NotSupported("TODO: SqlValueFieldVisitor.visitArray") ;
     }
 }

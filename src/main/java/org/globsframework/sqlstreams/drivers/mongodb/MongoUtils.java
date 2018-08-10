@@ -18,6 +18,7 @@ import org.globsframework.sqlstreams.annotations.IsDbKey;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.utils.Ref;
 import org.globsframework.utils.collections.MultiMap;
+import org.globsframework.utils.exceptions.NotSupported;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,6 +124,11 @@ public class MongoUtils {
                     }
 
                     public void visitBlob(BlobField field) throws Exception {
+
+                    }
+
+                    public void visitArray(ArrayField field) throws Exception {
+                        throw new NotSupported("TODO: SqlValueFieldVisitor.visitArray") ;
 
                     }
                 }).accessor;

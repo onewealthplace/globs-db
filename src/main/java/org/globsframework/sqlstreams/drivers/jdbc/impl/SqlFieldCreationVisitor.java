@@ -7,6 +7,7 @@ import org.globsframework.metamodel.fields.*;
 import org.globsframework.model.Glob;
 import org.globsframework.sqlstreams.SqlService;
 import org.globsframework.sqlstreams.utils.StringPrettyWriter;
+import org.globsframework.utils.exceptions.NotSupported;
 
 public abstract class SqlFieldCreationVisitor implements FieldVisitor {
     private SqlService sqlService;
@@ -50,6 +51,11 @@ public abstract class SqlFieldCreationVisitor implements FieldVisitor {
 
     public void visitBlob(BlobField field) throws Exception {
         add("BLOB", field);
+    }
+
+    @Override
+    public void visitArray(ArrayField field) throws Exception {
+        throw new NotSupported("TODO: SqlFieldCreationVisitor.visitArray") ;
     }
 
     protected void add(String param, Field field) {

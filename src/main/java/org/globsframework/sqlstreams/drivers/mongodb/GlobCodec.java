@@ -15,6 +15,7 @@ import org.globsframework.model.Glob;
 import org.globsframework.model.MutableGlob;
 import org.globsframework.sqlstreams.SqlService;
 import org.globsframework.sqlstreams.annotations.IsBigDecimal;
+import org.globsframework.utils.exceptions.NotSupported;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -112,6 +113,11 @@ public class GlobCodec implements Codec<Glob> {
         public void visitBlob(BlobField field, BsonReader reader, MutableGlob mutableGlob) throws Exception {
             mutableGlob.set(field, reader.readBinaryData().getData());
         }
+
+        @Override
+        public void visitArray(ArrayField field, BsonReader context, MutableGlob context2) throws Exception {
+            throw new NotSupported("FieldReaderVisitor: visiyArray") ;
+        }
     }
 
     static class FieldWriterVisitor implements FieldVisitorWithTwoContext<BsonWriter, Glob> {
@@ -171,6 +177,11 @@ public class GlobCodec implements Codec<Glob> {
                 bsonWriter.writeName(fieldStringMap.get(field));
                 bsonWriter.writeBinaryData(new BsonBinary(value));
             }
+        }
+
+        @Override
+        public void visitArray(ArrayField field, BsonWriter context, Glob context2) throws Exception {
+            throw new NotSupported("TODO: remove") ;
         }
     }
 

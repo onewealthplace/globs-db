@@ -7,6 +7,7 @@ import org.bson.types.ObjectId;
 import org.globsframework.metamodel.Field;
 import org.globsframework.metamodel.GlobType;
 import org.globsframework.metamodel.fields.*;
+import org.globsframework.model.Glob;
 import org.globsframework.model.GlobList;
 import org.globsframework.sqlstreams.*;
 import org.globsframework.sqlstreams.annotations.DbRef;
@@ -16,6 +17,7 @@ import org.globsframework.sqlstreams.exceptions.RollbackFailed;
 import org.globsframework.sqlstreams.exceptions.SqlException;
 import org.globsframework.streams.accessors.*;
 import org.globsframework.streams.accessors.utils.*;
+import org.globsframework.utils.exceptions.NotSupported;
 
 import java.sql.Connection;
 import java.util.ArrayList;
@@ -193,6 +195,11 @@ public class MongoDbConnection implements SqlConnection {
 
                 public void visitBlob(BlobField field, byte[] value) throws Exception {
                     set(field, value);
+                }
+
+                @Override
+                public void visitArray(ArrayField field, List<Glob> value) {
+                    throw new NotSupported("TODO: remove") ;
                 }
             }, value);
             return this;

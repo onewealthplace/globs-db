@@ -138,6 +138,11 @@ public class SqlCreateRequest implements SqlRequest {
             convertValue = "'" + value.toString() + "'";
         }
 
+        @Override
+        public void visitArray(ArrayField field) throws Exception {
+            convertValue = "'" + value.toString() + "'";
+        }
+
         public void visitLong(LongField field) throws Exception {
             convertValue = value.toString();
         }
