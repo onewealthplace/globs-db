@@ -9,9 +9,6 @@ object OWP_GlobsDb_Repository_Dev : GitVcsRoot({
     name = "https://github.com/onewealthplace/globs-db#refs/heads/dev"
     url = "https://github.com/onewealthplace/globs-db"
     branch = "refs/heads/dev"
-    branchSpec = """
-        +:*
-    """.trimIndent()
     authMethod = password {
         userName = "cedbossneo"
         password = "credentialsJSON:5bc09a01-94ad-44aa-a6d6-3e1fcc90d6c2"
