@@ -1,6 +1,7 @@
 package OWP_GlobsDb.patches.buildTypes
 
 import jetbrains.buildServer.configs.kotlin.v2017_2.*
+import jetbrains.buildServer.configs.kotlin.v2017_2.buildSteps.GradleBuildStep
 import jetbrains.buildServer.configs.kotlin.v2017_2.buildSteps.gradle
 import jetbrains.buildServer.configs.kotlin.v2017_2.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.v2017_2.ui.*
@@ -36,6 +37,7 @@ changeBuildType("33f9b299-dff2-4339-8ad9-317c6c3e2c7e") {
             script {
                 name = "Fossa"
                 scriptContent = """
+                    set -e
                     ./gradlew build -x test
                     fossa
                     fossa test
@@ -46,6 +48,8 @@ changeBuildType("33f9b299-dff2-4339-8ad9-317c6c3e2c7e") {
                     -e FOSSA_API_KEY=9009fadc3b7be531316376a3d5f3cd87
                 """.trimIndent()
             }
+        }
+        update<GradleBuildStep>(2) {
         }
     }
 }
