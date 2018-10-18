@@ -32,7 +32,7 @@ changeBuildType("33f9b299-dff2-4339-8ad9-317c6c3e2c7e") {
         }
     }
     steps {
-        insert(2) {
+        insert(1) {
             script {
                 name = "Fossa"
                 scriptContent = """
