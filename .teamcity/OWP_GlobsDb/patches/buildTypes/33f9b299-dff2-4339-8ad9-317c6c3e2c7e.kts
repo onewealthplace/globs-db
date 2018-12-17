@@ -18,11 +18,11 @@ changeBuildType("33f9b299-dff2-4339-8ad9-317c6c3e2c7e") {
             incremental = true
             useGradleWrapper = true
             enableStacktrace = true
+            dockerImage = "gradle:4.3.1"
+            dockerRunParameters = "--net=host"
             coverageEngine = idea {
                 includeClasses = "org.globsframework.*"
             }
-            dockerImage = "gradle:4.3.1"
-            dockerRunParameters = "--net=host"
         }
         gradle {
             tasks = "publish"
