@@ -50,6 +50,7 @@ changeBuildType("33f9b299-dff2-4339-8ad9-317c6c3e2c7e") {
             }
         }
         update<GradleBuildStep>(2) {
+            param("teamcity.tool.jacoco", "")
         }
     }
 }
