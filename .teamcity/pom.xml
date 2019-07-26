@@ -2,25 +2,27 @@
 <project>
   <modelVersion>4.0.0</modelVersion>
   <name>OWP_GlobsDb Config DSL Script</name>
-  <properties>
-    <kotlin.version>1.1.4-3</kotlin.version>
-    <teamcity.dsl.version>2017.2</teamcity.dsl.version>
-  </properties>
   <groupId>OWP_GlobsDb</groupId>
   <artifactId>OWP_GlobsDb_dsl</artifactId>
   <version>1.0-SNAPSHOT</version>
 
+  <parent>
+    <groupId>org.jetbrains.teamcity</groupId>
+    <artifactId>configs-dsl-kotlin-parent</artifactId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+
   <repositories>
     <repository>
       <id>jetbrains-all</id>
-      <url>http://download.jetbrains.com/teamcity-repository</url>
+      <url>https://download.jetbrains.com/teamcity-repository</url>
       <snapshots>
         <enabled>true</enabled>
       </snapshots>
     </repository>
     <repository>
       <id>teamcity-server</id>
-      <url>http://teamcity.1wplace.com/app/dsl-plugins-repository</url>
+      <url>https://teamcity.1wplace.com/app/dsl-plugins-repository</url>
       <snapshots>
         <enabled>true</enabled>
       </snapshots>
@@ -30,7 +32,7 @@
   <pluginRepositories>
     <pluginRepository>
       <id>JetBrains</id>
-      <url>http://download.jetbrains.com/teamcity-repository</url>
+      <url>https://download.jetbrains.com/teamcity-repository</url>
     </pluginRepository>
   </pluginRepositories>
 
@@ -88,25 +90,13 @@
     </dependency>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>
-      <artifactId>kotlin-runtime</artifactId>
-      <version>${kotlin.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.jetbrains.kotlin</groupId>
-      <artifactId>kotlin-stdlib</artifactId>
+      <artifactId>kotlin-stdlib-jdk8</artifactId>
       <version>${kotlin.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>
       <artifactId>kotlin-script-runtime</artifactId>
-      <version>${kotlin.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.jetbrains.kotlin</groupId>
-      <artifactId>kotlin-reflect</artifactId>
       <version>${kotlin.version}</version>
       <scope>compile</scope>
     </dependency>
